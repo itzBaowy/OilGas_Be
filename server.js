@@ -26,6 +26,7 @@ const swaggerOptions = {
     },
     servers: [
       { url: `http://localhost:${PORT}` },
+      { url: `https://oilgas-backend.onrender.com` },
     ],
     components: {
       securitySchemes: {
