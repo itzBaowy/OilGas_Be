@@ -7,7 +7,7 @@ import prisma from "../../prisma/connect.prisma.js";
 const BACKEND_URL = process.env.BACKEND_URL;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRECT = process.env.GOOGLE_CLIENT_SECRET;
-const DEFAULT_ROLE_NAME = 'Engineer';
+
 /**
  * phải chạy trước mọi api xử lý về login google
  */
@@ -23,7 +23,6 @@ export const initGoogleStrategy = () => {
 
                 const email = profile.emails[0].value;
                 const isVerified = profile.emails[0].verified;
-                const fullName = profile.displayName;
 
                 if (!isVerified) {
                     // thất bại cb(error,null)
