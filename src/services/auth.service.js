@@ -9,6 +9,9 @@ export const authService = {
   async register(req) {
     const { fullName, email, password, phoneNumber, roleId } = req.body;
     // check duplicate email
+    if (!password) {
+      throw new BadRequestException('Password is required');
+    }
     const existUser = await prisma.user.findUnique({ where: { email } });
     if (existUser) throw new BadRequestException('Email existed');
 
