@@ -3,7 +3,7 @@ import express from 'express';
 import { authController } from '../controllers/auth.controller.js';
 import { protect } from '../common/middlewares/protect.middleware.js';
 import passport from 'passport';
-const router = express.Router();
+const authRouter = express.Router();
 
 /**
  * @swagger
@@ -37,7 +37,7 @@ const router = express.Router();
  *       201:
  *         description: Đăng ký thành công
  */
-router.post('/register', authController.register);
+authRouter.post('/register', authController.register);
 
 /**
  * @swagger
@@ -60,7 +60,7 @@ router.post('/register', authController.register);
  *       200:
  *         description: Đăng nhập thành công
  */
-router.post('/login', authController.login);
+authRouter.post('/login', authController.login);
 
 
 /**
@@ -98,7 +98,7 @@ router.post('/login', authController.login);
  *       401:
  *         description: Token không hợp lệ
  */
-router.post("/refresh-token", authController.refreshToken)
+authRouter.post("/refresh-token", authController.refreshToken)
 
 /**
  * @swagger
@@ -142,7 +142,7 @@ router.post("/refresh-token", authController.refreshToken)
  *       401:
  *         description: Không có quyền truy cập
  */
-router.get("/get-info", protect, authController.getInfo);
+authRouter.get("/get-info", protect, authController.getInfo);
 
 /**
  * @swagger
@@ -174,7 +174,7 @@ router.get("/get-info", protect, authController.getInfo);
  *       401:
  *         description: Không có quyền truy cập
  */
-router.post('/change-password', protect, authController.changePassword);
+authRouter.post('/change-password', protect, authController.changePassword);
 
 
 /**
@@ -190,10 +190,10 @@ router.post('/change-password', protect, authController.changePassword);
  */
 // kích hoạt logic của passport, để pasport xử lý với google, cùng với yêu cầu tôi muốn lấy email, và profile của người dùng
 // sau khi passport làm việc với google xong, passport sẽ tự redirect người dùng tới trang đăng nhập google
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+authRouter.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 
 // Sau khi người dùng chọn tài khoản gmail và đồng ý với bên google
 // Passport sẽ lấy code và xử lý với bên google => lấy thông tin gmail => kích hoạt hàm verify ở trong src/common/passport/login-google.passport.js
-router.get("/google-callback", passport.authenticate('google', { failureRedirect: '/login', session: false }), authController.googleCallback);
-export default router;
+authRouter.get("/google-callback", passport.authenticate('google', { failureRedirect: '/login', session: false }), authController.googleCallback);
+export default authRouter;
