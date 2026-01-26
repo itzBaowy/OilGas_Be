@@ -10,9 +10,11 @@ export const appErorr = (err, req, res, next) => {
 
     if (err instanceof jwt.JsonWebTokenError) {
         err.code = statusCodes.UNAUTHORIZED; // 401 => FE logout người dùng
+        err.message = "Invalid Token";
     }
     if (err instanceof jwt.TokenExpiredError) {
         err.code = statusCodes.FORBIDDEN; // 403 => FE sẽ gọi api POST: api/auth/refresh-token
+        err.message = "Token Expired";
     }
 
     // undefinde: không tồn tại
