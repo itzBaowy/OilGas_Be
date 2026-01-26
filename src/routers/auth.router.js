@@ -176,6 +176,79 @@ authRouter.get("/get-info", protect, authController.getInfo);
  */
 authRouter.post('/change-password', protect, authController.changePassword);
 
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Yêu cầu OTP reset password (gửi email)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: Email của tài khoản cần reset password
+ *             required:
+ *               - email
+ *     responses:
+ *       200:
+ *         description: OTP đã được gửi qua email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Email không tồn tại
+ */
+authRouter.post("/forgot-password", authController.forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password với OTP 6 số
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: Email của tài khoản
+ *               otp:
+ *                 type: string
+ *                 description: Mã OTP 6 số từ email
+ *               newPassword:
+ *                 type: string
+ *                 description: Mật khẩu mới
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *     responses:
+ *       200:
+ *         description: Reset password thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: OTP không hợp lệ hoặc đã hết hạn
+ */
+authRouter.post("/reset-password", authController.resetPassword);
 
 /**
  * @swagger
