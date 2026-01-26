@@ -96,6 +96,71 @@ const userRouter = express.Router();
  */
 userRouter.get("/", userController.getAllUsers);
 
+/**
+ * @swagger
+ * /api/users/avatar-cloud:
+ *   post:
+ *     summary: Upload avatar lên Cloudinary
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *                 description: File ảnh avatar (jpg, jpeg, png, gif)
+ *             required:
+ *               - avatar
+ *     responses:
+ *       200:
+ *         description: Upload avatar thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Upload avatar successfully
+ *                 content:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Không có file hoặc file không hợp lệ
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 400
+ *                 message:
+ *                   type: string
+ *                   example: Không có file
+ *       401:
+ *         description: Chưa đăng nhập
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 401
+ *                 message:
+ *                   type: string
+ *                   example: Unauthorized
+ */
 userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userController.avatarCloud);
 
 
