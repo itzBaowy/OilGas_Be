@@ -22,5 +22,10 @@ export const authController = {
           const result = await authService.getInfo(req);
           const response = responseSuccess(result, `Get info successfully`);
           res.status(response.statusCode).json(response);
-     }
+     },
+          async changePassword(req, res, next) {
+          const result = await authService.changePassword(req);
+          const response = responseSuccess(result, `Change password successfully`);
+          res.status(response.statusCode).json(response);
+     },
 };

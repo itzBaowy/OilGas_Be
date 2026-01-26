@@ -66,7 +66,7 @@ export const authService = {
       throw new UnauthorizedException("Invalid Access Token");
     }
     const accessToken = authHeader.split(' ')[1];
-    
+
     // Lấy refreshToken từ body
     const { refreshToken } = req.body;
     if (!refreshToken) {
@@ -101,5 +101,42 @@ export const authService = {
     // console.log({ accessToken, refreshToken });
 
     return tokens;
+  },
+
+  async changePassword(req) {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      throw new BadRequestException('Old password and new password are required');
+    }
+
+    if (oldPassword === newPassword) {
+      throw new BadRequestException('New password must be different from old password');
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const isMatch = bcrypt.compareSync(oldPassword, user.password);
+    if (!isMatch) {
+      throw new BadRequestException('Wrong password');
+    }
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    delete updatedUser.password;
+
+    return updatedUser;
   },
 };

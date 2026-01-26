@@ -143,4 +143,37 @@ router.post("/refresh-token", authController.refreshToken)
  */
 router.get("/get-info", protect, authController.getInfo);
 
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   post:
+ *     summary: Đổi mật khẩu
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *             required:
+ *               - oldPassword
+ *               - newPassword
+ *     responses:
+ *       200:
+ *         description: Đổi mật khẩu thành công
+ *       400:
+ *         description: Mật khẩu cũ không đúng
+ *       401:
+ *         description: Không có quyền truy cập
+ */
+router.post('/change-password', protect, authController.changePassword);
+
+
 export default router;
