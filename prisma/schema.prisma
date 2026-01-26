@@ -40,3 +40,20 @@ model Role {
 
   @@map("Role")
 }
+
+model Log {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  method      String   // GET, POST, PUT, DELETE
+  path        String   // /api/auth/login
+  statusCode  Int      // 200, 404, 500
+  userId      String?  @db.ObjectId // Nếu user đã đăng nhập
+  userEmail   String?  // Email của user
+  ipAddress   String?  // IP của client
+  userAgent   String?  // Browser/device info
+  requestBody String?  // JSON string của request body (không lưu password)
+  responseTime Int?    // Thời gian xử lý request (ms)
+  errorMessage String? // Error message nếu có
+  createdAt   DateTime @default(now())
+
+  @@map("Log")
+}

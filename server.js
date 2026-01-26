@@ -7,6 +7,7 @@ import rootRouter from './src/routers/root.router.js';
 import { appErorr } from './src/common/helpers/handle-error.helper.js';
 import { NotFoundException } from './src/common/helpers/exception.helper.js';
 import { initGoogleStrategy } from './src/common/passport/login-google.passport.js';
+import { logger } from './src/common/middlewares/logger.middleware.js';
 
 
 const app = express();
@@ -15,6 +16,7 @@ const PORT = process.env.PORT || 3000;
 // Cấu hình Middleware cơ bản
 app.use(cors());           // Cho phép FE gọi API
 app.use(express.json());   // Đọc được body JSON
+app.use(logger);           // Logger middleware - tự động lưu logs vào DB
 
 // Cấu hình Swagger (Tài liệu API)
 const swaggerOptions = {
