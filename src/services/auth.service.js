@@ -34,7 +34,9 @@ export const authService = {
         password: hashedPassword,
         fullName,
         phoneNumber,
-        roleId: assignedRoleId
+        roleId: assignedRoleId,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
       },
       include: { role: true }
     });
@@ -195,24 +197,36 @@ export const authService = {
       throw new BadRequestException('Email, OTP and new password are required');
     }
 
-    // Tìm user với OTP và chưa hết hạn
+    // Tìm user với email và OTP
     const user = await prisma.user.findFirst({
       where: {
         email: email,
         resetPasswordToken: otp,
-        resetPasswordExpires: { gt: new Date() }, // OTP chưa hết hạn
       },
     });
 
     if (!user) {
-      throw new BadRequestException('Invalid or expired OTP');
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    // Kiểm tra OTP đã hết hạn chưa
+    if (user.resetPasswordExpires && new Date() > user.resetPasswordExpires) {
+      // OTP đã hết hạn → Xóa OTP và throw error
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+        },
+      });
+      throw new BadRequestException('OTP has expired. Please request a new one');
     }
 
     // Kiểm tra mật khẩu mới không trùng với mật khẩu cũ
-    const isSamePassword = bcrypt.compareSync(newPassword, user.password);
-    if (isSamePassword) {
-      throw new BadRequestException('New password must be different from old password');
-    }
+    // const isSamePassword = bcrypt.compareSync(newPassword, user.password);
+    // if (isSamePassword) {
+    //   throw new BadRequestException('New password must be different from old password');
+    // }
 
     // Hash password mới
     const hashedPassword = bcrypt.hashSync(newPassword, 10);

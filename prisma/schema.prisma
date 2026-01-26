@@ -17,11 +17,9 @@ datasource db {
 model User {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   email       String   @unique
-  password    String?
-  googleId    String?
-  avatar      String?
+  password    String
   fullName    String
-  phoneNumber String?
+  phoneNumber String
   roleId      String   @db.ObjectId
   role        Role     @relation(fields: [roleId], references: [id])
   status      String   @default("ACTIVE")
