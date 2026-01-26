@@ -24,8 +24,6 @@ export const initGoogleStrategy = () => {
                 const email = profile.emails[0].value;
                 const isVerified = profile.emails[0].verified;
                 const fullName = profile.displayName;
-                const googleId = profile.id;
-                const avatar = profile.photos[0].value;
 
                 if (!isVerified) {
                     // thất bại cb(error,null)
@@ -37,29 +35,17 @@ export const initGoogleStrategy = () => {
                     where: {
                         email: email,
                     },
+                    include: { role: true },
                 });
 
-                // assign role
-                const defaultRole = await prisma.role.findUnique({ where: { name: DEFAULT_ROLE_NAME } });
-                if (!defaultRole) throw new BadRequestException(`No ${DEFAULT_ROLE_NAME} Role found`);
-
-                // Nếu mà không có tài khoản thì tạo mới
-                // Sẽ luôn luôn cho người dùng đăng nhập
-                // Vì bên phía Google đã hỗ trợ xác thực
+                // Web nội bộ: Chỉ cho phép login nếu email đã tồn tại trong hệ thống
+                // Admin phải tạo user trước, sau đó user mới có thể login bằng Google
                 if (!userExist) {
-                    await prisma.user.create({
-                        data: {
-                            email: email,
-                            googleId: googleId,
-                            avatar: avatar,
-                            fullName: fullName,
-                            roleId: defaultRole.id,
-                        },
-                        include: { role: true },
-                    });
+                    cb(new BadRequestException("Your email is not registered in the system. Please contact administrator."), null);
+                    return;
                 }
 
-                // nếu mà code chạy được tới đây thì sẽ đảm bảo userExist luôn có dữ liệu
+                // Nếu user tồn tại → Cho phép đăng nhập
                 // thành công cb(null, user);
                 cb(null, userExist);
             }
