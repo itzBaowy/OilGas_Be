@@ -23,9 +23,13 @@ export const authController = {
           const response = responseSuccess(result, `Get info successfully`);
           res.status(response.statusCode).json(response);
      },
-          async changePassword(req, res, next) {
+     async changePassword(req, res, next) {
           const result = await authService.changePassword(req);
           const response = responseSuccess(result, `Change password successfully`);
           res.status(response.statusCode).json(response);
+     },
+     async googleCallback(req, res, next) {
+          const result = await authService.googleCallback(req);
+          res.redirect(result);
      },
 };

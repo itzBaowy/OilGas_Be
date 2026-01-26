@@ -2,6 +2,7 @@ import express from 'express';
 // Lưu ý: Dùng dấu { } để import vì bên controller là named export
 import { authController } from '../controllers/auth.controller.js';
 import { protect } from '../common/middlewares/protect.middleware.js';
+import passport from 'passport';
 const router = express.Router();
 
 /**
@@ -176,4 +177,23 @@ router.get("/get-info", protect, authController.getInfo);
 router.post('/change-password', protect, authController.changePassword);
 
 
+/**
+ * @swagger
+ * /api/auth/google:
+ *   get:
+ *     summary: Đăng nhập bằng Google OAuth
+ *     tags: [Auth]
+ *     description: Redirect người dùng đến trang đăng nhập Google
+ *     responses:
+ *       302:
+ *         description: Redirect đến Google OAuth
+ */
+// kích hoạt logic của passport, để pasport xử lý với google, cùng với yêu cầu tôi muốn lấy email, và profile của người dùng
+// sau khi passport làm việc với google xong, passport sẽ tự redirect người dùng tới trang đăng nhập google
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+
+// Sau khi người dùng chọn tài khoản gmail và đồng ý với bên google
+// Passport sẽ lấy code và xử lý với bên google => lấy thông tin gmail => kích hoạt hàm verify ở trong src/common/passport/login-google.passport.js
+router.get("/google-callback", passport.authenticate('google', { failureRedirect: '/login', session: false }), authController.googleCallback);
 export default router;

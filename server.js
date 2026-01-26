@@ -6,6 +6,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import rootRouter from './src/routers/root.router.js';
 import { appErorr } from './src/common/helpers/handle-error.helper.js';
 import { NotFoundException } from './src/common/helpers/exception.helper.js';
+import { initGoogleStrategy } from './src/common/passport/login-google.passport.js';
 
 
 const app = express();
@@ -42,6 +43,8 @@ const swaggerOptions = {
   // Đường dẫn đến các file chứa comment @swagger
   apis: ['./src/routers/*.js'], 
 };
+
+initGoogleStrategy(); // Khởi tạo chiến lược đăng nhập Google
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

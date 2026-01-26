@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { tokenService } from './token.service.js';
 import { BadRequestException, UnauthorizedException } from "../common/helpers/exception.helper.js";
 
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 export const authService = {
   async register(req) {
@@ -139,4 +140,17 @@ export const authService = {
 
     return updatedUser;
   },
+
+  async googleCallback(req) {
+    // console.log("user google", req.user);
+
+    const { accessToken, refreshToken } = tokenService.createTokens(req.user.id);
+    // console.log({ accessToken, refreshToken });
+
+    // truyền AT và RT trong query url của FE
+    // FE dùng hook  useSearchParams(); để lấy AT và RT
+    const urlRedirect = `${FRONTEND_URL}/login-callback?accessToken=${accessToken}&refreshToken=${refreshToken}`;
+    return urlRedirect;
+  },
+
 };
