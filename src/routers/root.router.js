@@ -6,7 +6,7 @@ import logRouter from './log.router.js';
 const rootRouter = express.Router()
 
 rootRouter.use("/auth", authRouter)
-rootRouter.use("/user", userRouter)
+rootRouter.use("/users", userRouter)
 rootRouter.use("/logs", logRouter)
 
 export default rootRouter

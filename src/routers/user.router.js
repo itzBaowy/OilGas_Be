@@ -12,7 +12,7 @@ const userRouter = express.Router();
 
 /**
  * @swagger
- * /api/user:
+ * /api/users:
  *   get:
  *     summary: Lấy danh sách người dùng (có phân trang và lọc)
  *     tags: [Users]
