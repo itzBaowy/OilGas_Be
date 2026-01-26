@@ -1,11 +1,13 @@
 import express from "express";
 import { userController } from "../controllers/user.controller.js";
+import { protect } from "../common/middlewares/protect.middleware.js";
+import { uploadMemory } from "../common/multer/memory.multer.js";
 
 const userRouter = express.Router();
 
 /**
  * @swagger
- * tags:
+ * tags:    
  *   name: Users
  *   description: API quản lý người dùng
  */
@@ -93,6 +95,8 @@ const userRouter = express.Router();
  *                             format: date-time
  */
 userRouter.get("/", userController.getAllUsers);
+
+userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userController.avatarCloud);
 
 
 export default userRouter;
