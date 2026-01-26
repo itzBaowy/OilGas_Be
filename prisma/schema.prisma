@@ -22,6 +22,7 @@ model User {
   phoneNumber String
   roleId      String   @db.ObjectId
   role        Role     @relation(fields: [roleId], references: [id])
+  avatarUrl   String?  @default("default avatar")
   status      String   @default("ACTIVE")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
