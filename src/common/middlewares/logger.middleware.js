@@ -1,6 +1,11 @@
 import { logService } from '../../services/log.service.js';
 
 export const logger = async (req, res, next) => {
+  // Bỏ qua logging cho /ping
+  if (req.path === '/ping' || req.originalUrl === '/ping') {
+    return next();
+  }
+
   const startTime = Date.now();
 
   // Lưu response.json gốc
