@@ -20,10 +20,4 @@ export const logController = {
     res.status(response.statusCode).json(response);
   },
 
-  async clearOldLogs(req, res, next) {
-    const { daysToKeep } = req.body;
-    const result = await logService.clearOldLogs(daysToKeep);
-    const response = responseSuccess(result, `Clear old logs successfully`);
-    res.status(response.statusCode).json(response);
-  },
 };

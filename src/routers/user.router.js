@@ -2,6 +2,7 @@ import express from "express";
 import { userController } from "../controllers/user.controller.js";
 import { protect } from "../common/middlewares/protect.middleware.js";
 import { uploadMemory } from "../common/multer/memory.multer.js";
+import { checkPermission } from "../common/middlewares/authorization.middleware.js";
 
 const userRouter = express.Router();
 
@@ -94,7 +95,7 @@ const userRouter = express.Router();
  *                             type: string
  *                             format: date-time
  */
-userRouter.get("/", userController.getAllUsers);
+userRouter.get("/", protect, checkPermission(['VIEW_USER', 'ALL']), userController.getAllUsers);
 
 /**
  * @swagger

@@ -1,6 +1,7 @@
 import express from 'express';
 import { logController } from '../controllers/log.controller.js';
 import { protect } from '../common/middlewares/protect.middleware.js';
+import { checkPermission } from '../common/middlewares/authorization.middleware.js';
 
 const logRouter = express.Router();
 
@@ -96,7 +97,7 @@ const logRouter = express.Router();
  *       401:
  *         description: Không có quyền truy cập
  */
-logRouter.get('/', protect, logController.getLogs);
+logRouter.get('/', protect, checkPermission(['VIEW_AUDIT_LOG', 'ALL']), logController.getLogs);
 
 /**
  * @swagger
@@ -160,7 +161,7 @@ logRouter.get('/', protect, logController.getLogs);
  *       404:
  *         description: Không tìm thấy log
  */
-logRouter.get('/:id', protect, logController.getLogById);
+logRouter.get('/:id', protect, checkPermission(['VIEW_AUDIT_LOG', 'ALL']), logController.getLogById);
 
 /**
  * @swagger
@@ -185,50 +186,6 @@ logRouter.get('/:id', protect, logController.getLogById);
  *       404:
  *         description: Không tìm thấy log
  */
-logRouter.delete('/:id', protect, logController.deleteLog);
-
-/**
- * @swagger
- * /api/logs/clear-old:
- *   post:
- *     summary: Xóa logs cũ (theo số ngày)
- *     tags: [Logs]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               daysToKeep:
- *                 type: integer
- *                 default: 30
- *                 description: Số ngày logs cần giữ lại (mặc định 30 ngày)
- *     responses:
- *       200:
- *         description: Xóa logs cũ thành công
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 statusCode:
- *                   type: integer
- *                   example: 200
- *                 message:
- *                   type: string
- *                   example: Clear old logs successfully
- *                 content:
- *                   type: object
- *                   properties:
- *                     deletedCount:
- *                       type: integer
- *                       example: 150
- *       401:
- *         description: Không có quyền truy cập
- */
-logRouter.post('/clear-old', protect, logController.clearOldLogs);
+logRouter.delete('/:id', protect, checkPermission(['DELETE_AUDIT_LOG', 'ALL']), logController.deleteLog);
 
 export default logRouter;

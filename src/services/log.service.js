@@ -49,16 +49,4 @@ export const logService = {
     });
   },
 
-  async clearOldLogs(daysToKeep = 30) {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-
-    const result = await prisma.log.deleteMany({
-      where: {
-        createdAt: { lt: cutoffDate },
-      },
-    });
-
-    return { deletedCount: result.count };
-  },
 };
