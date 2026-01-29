@@ -166,5 +166,101 @@ userRouter.get("/", protect, checkPermission(['VIEW_USER', 'ALL']), userControll
  */
 userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userController.avatarCloud);
 
-
+/**
+ * @swagger
+ * /api/users:
+ *   post:
+ *     summary: Tạo người dùng mới
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - fullName
+ *               - phoneNumber
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: newuser@gmail.com
+ *                 description: Email người dùng (phải unique)
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: password123
+ *                 description: Mật khẩu (tối thiểu 6 ký tự)
+ *               fullName:
+ *                 type: string
+ *                 example: Nguyễn Văn A
+ *                 description: Họ và tên đầy đủ
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "0901234567"
+ *                 description: Số điện thoại
+ *               roleName:
+ *                 type: string
+ *                 example: Moderator
+ *                 description: Teen
+ *     responses:
+ *       200:
+ *         description: Tạo user thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Create user successfully
+ *                 content:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     fullName:
+ *                       type: string
+ *                     phoneNumber:
+ *                       type: string
+ *                     roleId:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: ACTIVE
+ *                     isActive:
+ *                       type: boolean
+ *                       example: true
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     role:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         permissions:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *       400:
+ *         description: Email đã tồn tại hoặc dữ liệu không hợp lệ
+ *       401:
+ *         description: Chưa đăng nhập
+ *       403:
+ *         description: Không có quyền CREATE_USER
+ */
+userRouter.post("/", protect, checkPermission(['CREATE_USER', 'ALL']), userController.createUsers);
 export default userRouter;

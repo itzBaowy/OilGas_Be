@@ -1,6 +1,8 @@
 import prisma from "../prisma/connect.prisma.js";
 import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 import cloudinary from "../common/cloudinary/init.cloudinary.js";
+import { BadRequestException } from "../common/helpers/exception.helper.js";
+import bcrypt from "bcryptjs";
 
 const FOLDER_IMAGE = "public/images";
 export const userService = {
@@ -70,10 +72,39 @@ export const userService = {
         //   đảm bảo 1 user - 1 avatar
         if (req.user.avatarCloudId && req.user.avatarCloudId !== 'public/images/default_avatar') {
             console.log("deleted old avatar");
-            cloudinary.uploader.destroy(req.user.avatarCloudId);           
+            cloudinary.uploader.destroy(req.user.avatarCloudId);
         }
 
         return true;
     },
 
+    async createUsers(req) {
+        const { fullName, email, password, phoneNumber, roleName } = req.body;
+        const role = await prisma.role.findUnique({
+            where: { name: roleName }
+        });
+
+        if (!role) {
+            throw new BadRequestException("Role does not exist");
+        }
+
+        // Hash Password
+        const hashedPassword = bcrypt.hashSync(password, 10);
+
+        // Create User
+        return await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                fullName,
+                phoneNumber,
+                roleId: role.id,
+                resetPasswordToken: null,
+                resetPasswordExpires: null,
+            },
+            include: { role: true }
+        });
+    }
+
 };
+
