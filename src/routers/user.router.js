@@ -19,6 +19,8 @@ const userRouter = express.Router();
  *   get:
  *     summary: Lấy danh sách người dùng (có phân trang và lọc)
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
