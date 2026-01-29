@@ -80,10 +80,18 @@ export const userService = {
 
     async createUsers(req) {
         const { fullName, email, password, phoneNumber, roleName } = req.body;
+        // check email exists
+        const userExist = await prisma.user.findUnique({
+            where: { email: email }
+        });
+        if (userExist) {
+            throw new BadRequestException("Email already exists");
+        }
+
+        // check role exists
         const role = await prisma.role.findUnique({
             where: { name: roleName }
         });
-
         if (!role) {
             throw new BadRequestException("Role does not exist");
         }
