@@ -1,34 +1,15 @@
-import { createTransport } from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 dotenv.config();
 
-export const emailService = {
-  // Tạo transporter với cấu hình email của bạn
-  createTransporter() {
-    return createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD,
-      },
-      tls: {
-        rejectUnauthorized: false
-      },
-      connectionTimeout: 10000, // 10 seconds
-      greetingTimeout: 10000, // 10 seconds
-      socketTimeout: 10000 // 10 seconds
-    });
-  },
+//config sendgrid api
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-  // Gửi email OTP reset password
+export const emailService = {
   async sendResetPasswordEmail(email, otp) {
-    const transporter = this.createTransporter();
-    
-    const mailOptions = {
-      from: `${process.env.MAIL_FROM_NAME || 'EVChargingSystem'} <${process.env.EMAIL_USER}>`,
+    const msg = {
       to: email,
+      from: process.env.SENDGRID_FROM_EMAIL,
       subject: 'OTP Reset Password - Oil & Gas Management',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -59,31 +40,42 @@ export const emailService = {
       console.log('📧 Sending OTP email to:', email);
       console.log('🔢 OTP:', otp);
       
-      const info = await transporter.sendMail(mailOptions);
-      console.log('✅ Email sent successfully:', info.messageId);
+      await sgMail.send(msg);
+      console.log('✅ Email sent successfully via SendGrid');
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending email:', error.message);
+      if (error.response) {
+        console.error('SendGrid error details:', error.response.body);
+      }
       throw new Error('Failed to send email');
     }
   },
 
   // OTP functions (nếu cần)
   async sendOtpEmail(email, otp) {
-    const transporter = this.createTransporter();
-    
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
+    const msg = {
       to: email,
+      from: process.env.SENDGRID_FROM_EMAIL,
       subject: 'Your OTP Code',
       text: `Your OTP code is: ${otp}. This code will expire in 5 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333;">Your OTP Code</h2>
+          <p>Your OTP code is: <strong style="font-size: 24px; color: #4CAF50;">${otp}</strong></p>
+          <p>This code will expire in 5 minutes.</p>
+        </div>
+      `,
     };
 
     try {
-      await transporter.sendMail(mailOptions);
+      await sgMail.send(msg);
       return { success: true };
     } catch (error) {
       console.error('Error sending email:', error);
+      if (error.response) {
+        console.error('SendGrid error details:', error.response.body);
+      }
       throw error;
     }
   },
