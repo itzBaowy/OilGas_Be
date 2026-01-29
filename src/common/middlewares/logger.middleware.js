@@ -19,8 +19,12 @@ export const logger = async (req, res, next) => {
     const userId = req.user?.id || null;
     const userEmail = req.user?.email || null;
 
-    // Lấy IP address
-    const ipAddress = req.ip || req.connection.remoteAddress || null;
+    // Lấy IP address (hỗ trợ proxy như Render, Heroku)
+    const ipAddress = req.headers['x-forwarded-for']?.split(',')[0].trim() || 
+                      req.headers['x-real-ip'] || 
+                      req.ip || 
+                      req.connection.remoteAddress || 
+                      'unknown';
 
     // Lấy User-Agent
     const userAgent = req.get('user-agent') || null;
@@ -54,6 +58,8 @@ export const logger = async (req, res, next) => {
       errorMessage: res.statusCode >= 400 ? errorMessage : null,
     };
 
+    console.log('📄 Người dùng', logData.userEmail ?? 'Guest', 'Tạo một request url: ', logData.path, ', với method', logData.method, '=>', logData.statusCode);
+    console.log('Địa chỉ IP:', logData.ipAddress );
     // Lưu log vào DB (không chờ, chạy async)
     logService.createLog(logData).catch((err) => {
       console.error('❌ Failed to save log:', err.message);

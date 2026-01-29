@@ -13,6 +13,8 @@ import { logger } from './src/common/middlewares/logger.middleware.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', true);
+
 // Cấu hình Middleware cơ bản
 app.use(cors());           // Cho phép FE gọi API
 app.use(express.json());   // Đọc được body JSON
