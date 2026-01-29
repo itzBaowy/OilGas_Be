@@ -268,5 +268,15 @@ authRouter.get('/google', passport.authenticate('google', { scope: ['profile', '
 
 // Sau khi người dùng chọn tài khoản gmail và đồng ý với bên google
 // Passport sẽ lấy code và xử lý với bên google => lấy thông tin gmail => kích hoạt hàm verify ở trong src/common/passport/login-google.passport.js
-authRouter.get("/google-callback", passport.authenticate('google', { failureRedirect: '/google-fail?error=EMAIL_NOT_REGISTERED&message=Your+email+is+not+registered', session: false }), authController.googleCallback);
+const FRONTEND_URL = process.env.FRONTEND_URL;
+authRouter.get("/google-callback", (req, res, next) => {
+    passport.authenticate('google', { session: false, failureMessage: true }, (err, user, info) => {
+        if (err || !user) {
+            const errorMsg = 'Your email is not registered';
+            return res.redirect(`${FRONTEND_URL}/google-fail?error=EMAIL_NOT_REGISTERED&error=${encodeURIComponent(errorMsg)}`);
+        }
+        req.user = user;
+        return authController.googleCallback(req, res, next);
+    })(req, res, next);
+});
 export default authRouter;

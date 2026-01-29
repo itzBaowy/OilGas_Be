@@ -25,8 +25,8 @@ export const initGoogleStrategy = () => {
                 const isVerified = profile.emails[0].verified;
 
                 if (!isVerified) {
-                    // thất bại cb(error,null)
-                    cb(new BadRequestException("Email isVerified=false"), null);
+                    // thất bại: cb(null, false, info) để trigger failureRedirect
+                    cb(null, false, { message: "Email is not verified" });
                     return;
                 }
 
@@ -40,7 +40,7 @@ export const initGoogleStrategy = () => {
                 // Web nội bộ: Chỉ cho phép login nếu email đã tồn tại trong hệ thống
                 // Admin phải tạo user trước, sau đó user mới có thể login bằng Google
                 if (!userExist) {
-                    cb(new BadRequestException("Your email is not registered in the system. Please contact administrator."), null);
+                    cb(null, false, { message: "Your email is not registered in the system. Please contact administrator." });
                     return;
                 }
 
