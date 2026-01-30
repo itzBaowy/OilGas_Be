@@ -61,12 +61,12 @@ export const roleService = {
         });
 
         if (existingRole) {
-            throw new BadRequestException("Role đã tồn tại");
+            throw new BadRequestException("Role exists");
         }
 
         // Validate permissions nếu cần
         if (permissions && !Array.isArray(permissions)) {
-            throw new BadRequestException("Permissions phải là array");
+            throw new BadRequestException("Permissions must be an array");
         }
 
         const role = await prisma.role.create({
@@ -90,7 +90,7 @@ export const roleService = {
         });
 
         if (!existingRole) {
-            throw new NotFoundException("Role không tồn tại");
+            throw new NotFoundException("Role does not exist");
         }
 
         // Nếu đổi tên, kiểm tra tên mới đã tồn tại chưa
@@ -100,13 +100,13 @@ export const roleService = {
             });
 
             if (duplicateName) {
-                throw new BadRequestException("Tên role đã tồn tại");
+                throw new BadRequestException("Role name already exists");
             }
         }
 
         // Validate permissions nếu có
         if (permissions && !Array.isArray(permissions)) {
-            throw new BadRequestException("Permissions phải là array");
+            throw new BadRequestException("Permissions must be an array");
         }
 
         const updateData = {};
@@ -135,13 +135,13 @@ export const roleService = {
         });
 
         if (!existingRole) {
-            throw new NotFoundException("Role không tồn tại");
+            throw new NotFoundException("Role does not exist");
         }
 
         // Kiểm tra xem role có user nào đang dùng không
         if (existingRole._count.users > 0) {
             throw new BadRequestException(
-                `Không thể xóa role này vì còn ${existingRole._count.users} user đang sử dụng`
+                `Cannot delete this role because there are still ${existingRole._count.users} users using it`
             );
         }
 
@@ -149,7 +149,7 @@ export const roleService = {
             where: { id: roleId }
         });
 
-        return { message: "Xóa role thành công" };
+        return { message: "Role deleted successfully" };
     },
 
     // Thêm permission vào role
@@ -159,12 +159,12 @@ export const roleService = {
         });
 
         if (!role) {
-            throw new NotFoundException("Role không tồn tại");
+            throw new NotFoundException("Role does not exist");
         }
 
         // Kiểm tra permission đã tồn tại chưa
         if (role.permissions.includes(permission)) {
-            throw new BadRequestException("Permission đã tồn tại trong role");
+            throw new BadRequestException("Permission already exists in role");
         }
 
         const updatedRole = await prisma.role.update({
@@ -186,12 +186,12 @@ export const roleService = {
         });
 
         if (!role) {
-            throw new NotFoundException("Role không tồn tại");
+            throw new NotFoundException("Role does not exist");
         }
 
         // Kiểm tra permission có tồn tại không
         if (!role.permissions.includes(permission)) {
-            throw new BadRequestException("Permission không tồn tại trong role");
+            throw new BadRequestException("Permission does not exist in role");
         }
 
         const updatedPermissions = role.permissions.filter(p => p !== permission);
@@ -213,11 +213,11 @@ export const roleService = {
         });
 
         if (!role) {
-            throw new NotFoundException("Role không tồn tại");
+            throw new NotFoundException("Role does not exist");
         }
 
         if (!Array.isArray(permissions)) {
-            throw new BadRequestException("Permissions phải là array");
+            throw new BadRequestException("Permissions must be an array");
         }
 
         const updatedRole = await prisma.role.update({
