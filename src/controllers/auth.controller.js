@@ -1,3 +1,4 @@
+import { get } from "http";
 import { responseSuccess } from "../common/helpers/function.helper.js";
 import { authService } from "../services/auth.service.js";
 
@@ -43,4 +44,9 @@ export const authController = {
           const result = await authService.googleCallback(req);
           res.redirect(result);
      },
+     async getLoginHistory(req, res, next) {
+          const result = await authService.getLoginHistory(req);
+          const response = responseSuccess(result, `Login history retrieved successfully`);
+          res.status(response.statusCode).json(response);
+     }
 };

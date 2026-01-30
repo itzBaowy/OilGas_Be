@@ -279,4 +279,43 @@ authRouter.get("/google-callback", (req, res, next) => {
         return authController.googleCallback(req, res, next);
     })(req, res, next);
 });
+
+/**
+ * @swagger
+ * /api/auth/get-login-history:
+ *   get:
+ *     summary: Lấy lịch sử đăng nhập
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy lịch sử đăng nhập thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   userId:
+ *                     type: string
+ *                   loginAt:
+ *                     type: string
+ *                     format: date-time
+ *                   ipAddress:
+ *                     type: string
+ *                   userAgent:
+ *                     type: string
+ *                   device:
+ *                     type: string
+ *                   location:
+ *                     type: string
+ *       401:
+ *         description: Không có quyền truy cập
+ */
+authRouter.get("/get-login-history", protect, authController.getLoginHistory);
+
 export default authRouter;

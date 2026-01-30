@@ -29,6 +29,8 @@ model User {
   updatedAt   DateTime @updatedAt
   resetPasswordToken String?
   resetPasswordExpires DateTime?
+  lastPasswordChangeAt DateTime? @default(now()) 
+  loginHistory         LoginHistory[]
   @@map("User")
 }
 
@@ -57,4 +59,20 @@ model Log {
   createdAt   DateTime @default(now())
 
   @@map("Log")
+}
+
+model LoginHistory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  
+  ip        String?
+  location  String?  // Ví dụ: "Houston, TX"
+  device    String?  // Ví dụ: "Chrome / Windows"
+  os        String?
+  browser   String?
+  
+  loginAt   DateTime @default(now())
+
+  @@map("LoginHistory")
 }

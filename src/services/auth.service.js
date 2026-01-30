@@ -3,7 +3,11 @@ import bcrypt from 'bcryptjs';
 import { tokenService } from './token.service.js';
 import { BadRequestException, UnauthorizedException } from "../common/helpers/exception.helper.js";
 import { emailService } from './email.service.js';
-
+import { UAParser } from 'ua-parser-js';
+import requestIp from 'request-ip';
+import geoip from 'geoip-lite';
+import dotenv from 'dotenv';
+dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 export const authService = {
@@ -54,6 +58,27 @@ export const authService = {
     // Compare Password
     const isMatch = bcrypt.compareSync(password, user.password);
     if (!isMatch) throw new BadRequestException('Wrong password');
+    // Lưu lịch sử đăng nhập
+    const clientIp = requestIp.getClientIp(req) || '127.0.0.1';
+
+    const geo = geoip.lookup(clientIp);
+    const location = geo ? `${geo.city}, ${geo.country}` : 'Unknown Location';
+
+    const userAgent = req.headers['user-agent'];
+    const parser = new UAParser(userAgent);
+    const deviceName = `${parser.getBrowser().name} on ${parser.getOS().name}`;
+
+    await prisma.loginHistory.create({
+      data: {
+        userId: user.id,
+        ip: clientIp,
+        location: location,
+        device: deviceName,
+        browser: parser.getBrowser().name,
+        os: parser.getOS().name
+      }
+    });
+    // tạo token
     const tokens = tokenService.createTokens(user.id);
 
     return tokens;
@@ -139,7 +164,10 @@ export const authService = {
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        lastPasswordChangeAt: new Date() // lưu thời gian đổi mật khẩu
+      },
     });
 
     delete updatedUser.password;
@@ -242,6 +270,15 @@ export const authService = {
     });
 
     return { message: 'Password reset successfully' };
+  },
+
+  async getLoginHistory(req) {
+    const userId = req.user.id;
+    return await prisma.loginHistory.findMany({
+      where: { userId },
+      orderBy: { loginAt: 'desc' },
+      take: 10 // lấy 10 lần đăng nhập gần nhất
+    });
   },
 
 };
