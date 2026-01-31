@@ -26,10 +26,6 @@ export function validatePassword(password) {
     throw new BadRequestException('Password must include at least one number');
   }
 
-  if (password.length < 12) {
-    console.warn('Password length is less than 12 characters. Consider using a longer password for better security.');
-  }
-
   return true;
 }
 
@@ -39,7 +35,7 @@ export function validateEmail(email) {
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// validate email theo form ...@...
+  // validate email theo form ...@...
   if (!emailRegex.test(email)) {
     throw new BadRequestException('Invalid email format. Email must be in format: example@domain.com');
   }
