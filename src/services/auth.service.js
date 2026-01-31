@@ -3,8 +3,7 @@ import bcrypt from 'bcryptjs';
 import { tokenService } from './token.service.js';
 import { BadRequestException, UnauthorizedException } from "../common/helpers/exception.helper.js";
 import { emailService } from './email.service.js';
-import { validatePassword } from '../common/helpers/password.helper.js';
-import { validateEmail } from '../common/helpers/email.helper.js';
+import { validatePassword, validateEmail } from '../common/helpers/validate.helper.js';
 import { UAParser } from 'ua-parser-js';
 import requestIp from 'request-ip';
 import geoip from 'geoip-lite';
@@ -19,7 +18,7 @@ export const authService = {
     validateEmail(email);
     // Validate password
     validatePassword(password);
-    
+
     // check duplicate email
     const existUser = await prisma.user.findUnique({ where: { email } });
     if (existUser) throw new BadRequestException('Email existed');

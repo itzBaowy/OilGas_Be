@@ -3,8 +3,7 @@ import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 import cloudinary from "../common/cloudinary/init.cloudinary.js";
 import { BadRequestException } from "../common/helpers/exception.helper.js";
 import bcrypt from "bcryptjs";
-import { validatePassword } from "../common/helpers/password.helper.js";
-import { validateEmail } from "../common/helpers/email.helper.js";
+import { validatePassword, validateEmail } from "../common/helpers/validate.helper.js";
 
 const FOLDER_IMAGE = "public/images";
 export const userService = {
