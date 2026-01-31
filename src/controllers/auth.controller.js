@@ -48,5 +48,10 @@ export const authController = {
           const result = await authService.getLoginHistory(req);
           const response = responseSuccess(result, `Login history retrieved successfully`);
           res.status(response.statusCode).json(response);
+     },
+     async logout(req, res, next) {
+          const result = await authService.logout(req);
+          const response = responseSuccess(result, `Logout successfully`);
+          res.status(response.statusCode).json(response);
      }
 };

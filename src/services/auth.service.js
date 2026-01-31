@@ -295,4 +295,22 @@ export const authService = {
     });
   },
 
+  async logout(req) {
+    // Lấy token từ header Authorization
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException("Invalid Access Token");
+    }
+    const token = authHeader.split(' ')[1];
+
+    // Lưu token vào blacklist
+    await prisma.blackListToken.create({
+      data: {
+        token: token,
+      },
+    });
+
+    return { message: 'Logout successfully' };
+  },
+
 };

@@ -318,4 +318,28 @@ authRouter.get("/google-callback", (req, res, next) => {
  */
 authRouter.get("/get-login-history", protect, authController.getLoginHistory);
 
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Đăng xuất
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Đăng xuất và thêm token vào blacklist
+ *     responses:
+ *       200:
+ *         description: Đăng xuất thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Không có quyền truy cập hoặc token không hợp lệ
+ */
+authRouter.post("/logout", protect, authController.logout);
+
 export default authRouter;

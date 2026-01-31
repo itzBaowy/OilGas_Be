@@ -76,3 +76,11 @@ model LoginHistory {
 
   @@map("LoginHistory")
 }
+
+model BlackListToken {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  token     String
+  createdAt DateTime @default(now())
+
+  @@map("BlackListToken")
+}
