@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { tokenService } from './token.service.js';
 import { BadRequestException, UnauthorizedException } from "../common/helpers/exception.helper.js";
 import { emailService } from './email.service.js';
+import { validatePassword } from '../common/helpers/password.helper.js';
+import { validateEmail } from '../common/helpers/email.helper.js';
 import { UAParser } from 'ua-parser-js';
 import requestIp from 'request-ip';
 import geoip from 'geoip-lite';
@@ -13,10 +15,12 @@ const FRONTEND_URL = process.env.FRONTEND_URL;
 export const authService = {
   async register(req) {
     const { fullName, email, password, phoneNumber, roleId } = req.body;
+    // Validate email
+    validateEmail(email);
+    // Validate password
+    validatePassword(password);
+    
     // check duplicate email
-    if (!password) {
-      throw new BadRequestException('Password is required');
-    }
     const existUser = await prisma.user.findUnique({ where: { email } });
     if (existUser) throw new BadRequestException('Email existed');
 
@@ -141,6 +145,9 @@ export const authService = {
       throw new BadRequestException('Old password and new password are required');
     }
 
+    // Validate new password
+    validatePassword(newPassword);
+
     if (oldPassword === newPassword) {
       throw new BadRequestException('New password must be different from old password');
     }
@@ -190,6 +197,9 @@ export const authService = {
   async forgotPassword(req) {
     const { email } = req.body;
 
+    // Validate email
+    validateEmail(email);
+
     // Kiểm tra user có tồn tại không
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
@@ -224,6 +234,11 @@ export const authService = {
     if (!email || !otp || !newPassword) {
       throw new BadRequestException('Email, OTP and new password are required');
     }
+
+    // Validate email
+    validateEmail(email);
+    // Validate new password
+    validatePassword(newPassword);
 
     // Tìm user với email và OTP
     const user = await prisma.user.findFirst({

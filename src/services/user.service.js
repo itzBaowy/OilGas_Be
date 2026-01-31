@@ -3,6 +3,8 @@ import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 import cloudinary from "../common/cloudinary/init.cloudinary.js";
 import { BadRequestException } from "../common/helpers/exception.helper.js";
 import bcrypt from "bcryptjs";
+import { validatePassword } from "../common/helpers/password.helper.js";
+import { validateEmail } from "../common/helpers/email.helper.js";
 
 const FOLDER_IMAGE = "public/images";
 export const userService = {
@@ -80,6 +82,12 @@ export const userService = {
 
     async createUsers(req) {
         const { fullName, email, password, phoneNumber, roleName } = req.body;
+        
+        // Validate email
+        validateEmail(email);
+        // Validate password
+        validatePassword(password);
+        
         // check email exists
         const userExist = await prisma.user.findUnique({
             where: { email: email }
