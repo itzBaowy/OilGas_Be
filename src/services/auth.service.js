@@ -2,6 +2,7 @@ import prisma from '../prisma/connect.prisma.js';
 import bcrypt from 'bcryptjs';
 import { tokenService } from './token.service.js';
 import { BadRequestException, UnauthorizedException } from "../common/helpers/exception.helper.js";
+import { getTokenFromHeader } from '../common/helpers/function.helper.js';
 import { emailService } from './email.service.js';
 import { validatePassword, validateEmail } from '../common/helpers/validate.helper.js';
 import { UAParser } from 'ua-parser-js';
@@ -96,12 +97,7 @@ export const authService = {
 
   async refreshToken(req) {
     // Lấy accessToken từ header Authorization
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException("Invalid Access Token");
-    }
-    const accessToken = authHeader.split(' ')[1];
-
+    const accessToken = getTokenFromHeader(req);
     // Lấy refreshToken từ body
     const { refreshToken } = req.body;
     if (!refreshToken) {
@@ -297,16 +293,12 @@ export const authService = {
 
   async logout(req) {
     // Lấy token từ header Authorization
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException("Invalid Access Token");
-    }
-    const token = authHeader.split(' ')[1];
+    const accessToken = getTokenFromHeader(req);
 
     // Lưu token vào blacklist
     await prisma.blackListToken.create({
       data: {
-        token: token,
+        token: accessToken,
       },
     });
 

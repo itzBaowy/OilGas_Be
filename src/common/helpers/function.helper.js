@@ -1,3 +1,4 @@
+import { UnauthorizedException } from "./exception.helper.js";
 export function responseSuccess(data, message = "ok", statusCode = 200) {
     return {
         status: "success",
@@ -13,4 +14,13 @@ export function responseError(message = "Interval Server Error", statusCode = 50
         statusCode: statusCode,
         message: message,
     };
+}
+
+export function getTokenFromHeader(req) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new UnauthorizedException("Invalid Access Token");
+    }
+    const token = authHeader.split(' ')[1];
+    return token;
 }
