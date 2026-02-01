@@ -104,9 +104,9 @@ async function main() {
   console.log('✅ Seed Role thành công!');
 
   console.log('🌱 Đang khởi tạo dữ liệu User...');
-  
+
   // Hash password
-  const hashedPassword = await bcrypt.hash('123456', 10);
+  const hashedPassword = await bcrypt.hash('React001', 10);
 
   // Lấy role IDs
   const adminRole = await prisma.role.findUnique({ where: { name: 'Admin' } });
