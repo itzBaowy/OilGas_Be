@@ -146,7 +146,7 @@
         </div>
         <div class="form-group">
           <label>Password:</label>
-          <input type="password" id="password" placeholder="password" value="123456" />
+          <input type="text" id="password" placeholder="password" value="React001" />
         </div>
         <button class="btn-primary" onclick="login()">🔑 Login</button>
       </div>
@@ -180,6 +180,21 @@
       let socket = null;
       let accessToken = null;
       let currentUser = null;
+      let deviceId = null;
+
+      // Lấy hoặc tạo deviceId từ localStorage
+      function getOrCreateDeviceId() {
+        let id = localStorage.getItem('deviceId');
+        if (!id) {
+          // Tạo deviceId duy nhất cho browser này
+          id = 'device_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+          localStorage.setItem('deviceId', id);
+          addLog(`🆔 Đã tạo Device ID mới: ${id}`, 'info');
+        } else {
+          addLog(`🆔 Device ID từ localStorage: ${id}`, 'info');
+        }
+        return id;
+      }
 
       // Helper function để làm việc với cookies
       function setCookie(name, value, days = 7) {
@@ -335,9 +350,9 @@
         socket.on('connect', () => {
           addLog(`✅ Socket connected: ${socket.id}`, 'success');
           
-          // QUAN TRỌNG: Đăng ký userId với socket server
-          socket.emit('register_user', userId);
-          addLog(`📝 Đã đăng ký userId ${userId} với socket server`, 'success');
+          // QUAN TRỌNG: Đăng ký userId và deviceId với socket server
+          socket.emit('register_user', { userId, deviceId });
+          addLog(`📝 Đã đăng ký userId ${userId} và deviceId ${deviceId} với socket server`, 'success');
         });
 
         // ⚡ QUAN TRỌNG: Lắng nghe force_logout
@@ -425,6 +440,9 @@
       // Check token khi load trang
       window.onload = () => {
         addLog('🚀 Trang đã sẵn sàng!', 'success');
+        
+        // Khởi tạo deviceId
+        deviceId = getOrCreateDeviceId();
         
         const savedToken = getCookie('accessToken');
         if (savedToken) {

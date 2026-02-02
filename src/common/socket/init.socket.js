@@ -1,8 +1,8 @@
 import { Server } from 'socket.io';
 
 let io;
-// Map để lưu userId -> socketId
-const userSocketMap = new Map();
+// Map để lưu userId -> { socketId, deviceId }
+const userDeviceMap = new Map();
 
 export const initSocket = (httpServer) => {
     io = new Server(httpServer, {
@@ -15,26 +15,30 @@ export const initSocket = (httpServer) => {
     io.on('connection', (socket) => {
         console.log('A user connected:', socket.id);
         
-        // Client gửi userId khi kết nối
-        socket.on('register_user', (userId) => {
+        // Client gửi userId và deviceId khi kết nối
+        socket.on('register_user', ({ userId, deviceId }) => {
             if (userId) {
-                // Kiểm tra nếu user đã có socket khác
-                const existingSocketId = userSocketMap.get(userId);
-                if (existingSocketId && existingSocketId !== socket.id) {
-                    const existingSocket = io.sockets.sockets.get(existingSocketId);
+                // Kiểm tra nếu user đã có socket từ device khác
+                const existingData = userDeviceMap.get(userId);
+                if (existingData && existingData.deviceId !== deviceId) {
+                    // Chỉ force logout nếu deviceId khác nhau (login từ browser/device khác)
+                    const existingSocket = io.sockets.sockets.get(existingData.socketId);
                     if (existingSocket) {
-                        console.log(`Force logout user ${userId} from old socket ${existingSocketId}`);
+                        console.log(`Force logout user ${userId} from device ${existingData.deviceId} (socket ${existingData.socketId})`);
                         existingSocket.emit('force_logout', {
                             message: 'Your account has been logged in from another device'
                         });
                         existingSocket.disconnect(true);
                     }
+                } else if (existingData && existingData.deviceId === deviceId) {
+                    console.log(`User ${userId} reconnected from same device ${deviceId}, updating socket`);
                 }
                 
-                // Lưu userId vào socket và map
+                // Lưu userId, deviceId và socketId vào map
                 socket.userId = userId;
-                userSocketMap.set(userId, socket.id);
-                console.log(`User ${userId} registered with socket ${socket.id}`);
+                socket.deviceId = deviceId;
+                userDeviceMap.set(userId, { socketId: socket.id, deviceId });
+                console.log(`User ${userId} registered with socket ${socket.id}, device ${deviceId}`);
             }
         });
         
@@ -47,9 +51,13 @@ export const initSocket = (httpServer) => {
         
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
-            // Xóa khỏi map khi disconnect
+            // Xóa khỏi map khi disconnect (chỉ xóa nếu socket id khớp)
             if (socket.userId) {
-                userSocketMap.delete(socket.userId);
+                const existingData = userDeviceMap.get(socket.userId);
+                if (existingData && existingData.socketId === socket.id) {
+                    userDeviceMap.delete(socket.userId);
+                    console.log(`Removed user ${socket.userId} from map`);
+                }
             }
         });
     });
@@ -57,4 +65,4 @@ export const initSocket = (httpServer) => {
 
 export const getIO = () => io;
 
-export const getUserSocketMap = () => userSocketMap;
+export const getUserDeviceMap = () => userDeviceMap;
