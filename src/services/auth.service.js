@@ -6,6 +6,7 @@ import { getTokenFromHeader } from '../common/helpers/function.helper.js';
 import { emailService } from './email.service.js';
 import { validatePassword, validateEmail } from '../common/helpers/validate.helper.js';
 import { UAParser } from 'ua-parser-js';
+import jsonwebtoken from 'jsonwebtoken';
 import requestIp from 'request-ip';
 import geoip from 'geoip-lite';
 import dotenv from 'dotenv';

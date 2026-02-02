@@ -9,6 +9,8 @@ import { NotFoundException } from './src/common/helpers/exception.helper.js';
 import { initGoogleStrategy } from './src/common/passport/login-google.passport.js';
 import { logger } from './src/common/middlewares/logger.middleware.js';
 import { swaggerOptions } from './src/common/swagger/swagger.config.js';
+import { createServer } from 'http';
+import { initSocket } from './src/common/socket/init.socket.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,9 +46,10 @@ app.use((req, res, next) => {
     throw new NotFoundException();
 });
 app.use(appErorr);
-
+const httpServer = createServer(app);
+initSocket(httpServer);
 // Khởi chạy Server
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`-----------------------------------------`);
   console.log(`🚀 Server is running at http://localhost:${PORT}`);
   console.log(`📄 Swagger Docs at http://localhost:${PORT}/api-docs`);
