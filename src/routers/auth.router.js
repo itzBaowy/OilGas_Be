@@ -180,7 +180,7 @@ authRouter.post('/change-password', protect, authController.changePassword);
  * @swagger
  * /api/auth/forgot-password:
  *   post:
- *     summary: Yêu cầu OTP reset password (gửi email)
+ *     summary: Yêu cầu reset password (gửi link qua email)
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -191,21 +191,27 @@ authRouter.post('/change-password', protect, authController.changePassword);
  *             properties:
  *               email:
  *                 type: string
+ *                 format: email
  *                 description: Email của tài khoản cần reset password
+ *                 example: user@example.com
  *             required:
  *               - email
  *     responses:
  *       200:
- *         description: OTP đã được gửi qua email
+ *         description: Link reset password đã được gửi qua email
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
  *                 message:
  *                   type: string
+ *                   example: Password reset link has been sent to your email
  *       400:
- *         description: Email không tồn tại
+ *         description: Email không tồn tại hoặc không hợp lệ
  */
 authRouter.post("/forgot-password", authController.forgotPassword);
 
@@ -213,7 +219,7 @@ authRouter.post("/forgot-password", authController.forgotPassword);
  * @swagger
  * /api/auth/reset-password:
  *   post:
- *     summary: Reset password với OTP 6 số
+ *     summary: Reset password với token từ email
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -222,18 +228,17 @@ authRouter.post("/forgot-password", authController.forgotPassword);
  *           schema:
  *             type: object
  *             properties:
- *               email:
+ *               token:
  *                 type: string
- *                 description: Email của tài khoản
- *               otp:
- *                 type: string
- *                 description: Mã OTP 6 số từ email
+ *                 description: Reset token từ link trong email
+ *                 example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *               newPassword:
  *                 type: string
- *                 description: Mật khẩu mới
+ *                 format: password
+ *                 description: Mật khẩu mới (tối thiểu 8 ký tự, có chữ hoa, chữ thường, số)
+ *                 example: NewPassword123
  *             required:
- *               - email
- *               - otp
+ *               - token
  *               - newPassword
  *     responses:
  *       200:
@@ -243,10 +248,14 @@ authRouter.post("/forgot-password", authController.forgotPassword);
  *             schema:
  *               type: object
  *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
  *                 message:
  *                   type: string
+ *                   example: Password has been reset successfully
  *       400:
- *         description: OTP không hợp lệ hoặc đã hết hạn
+ *         description: Token không hợp lệ, đã hết hạn hoặc password không đúng format
  */
 authRouter.post("/reset-password", authController.resetPassword);
 

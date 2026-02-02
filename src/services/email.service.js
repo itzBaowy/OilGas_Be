@@ -6,51 +6,66 @@ dotenv.config();
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 export const emailService = {
-  async sendResetPasswordEmail(email, otp) {
-    const msg = {
-      to: email,
-      from: process.env.SENDGRID_FROM_EMAIL,
-      subject: 'OTP Reset Password - Oil & Gas Management',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333;">Reset Your Password</h2>
-          <p>Bạn đã yêu cầu reset mật khẩu. Sử dụng mã OTP bên dưới:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="background-color: #f0f0f0; padding: 20px; border-radius: 10px; display: inline-block;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #4CAF50;">
-                ${otp}
-              </span>
-            </div>
-          </div>
-          <p style="text-align: center; color: #666; font-size: 14px;">
-            Mã OTP có hiệu lực trong <strong>5 phút</strong>
-          </p>
-          <p style="color: #666; font-size: 14px; margin-top: 30px;">
-            ⚠️ Không chia sẻ mã này với bất kỳ ai.
-          </p>
-          <p style="color: #666; font-size: 14px;">
-            Nếu bạn không yêu cầu reset mật khẩu, vui lòng bỏ qua email này.
-          </p>
+async sendResetPasswordEmail(email, resetLink) {
+  const msg = {
+    to: email,
+    from: process.env.SENDGRID_FROM_EMAIL,
+    subject: 'Reset Your Password - Oil & Gas Management',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333;">Reset Your Password</h2>
+        <p>You have requested to reset your password. Click the button below to reset it:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" 
+             style="background-color: #4CAF50; color: white; padding: 15px 30px; 
+                    text-decoration: none; border-radius: 5px; display: inline-block;
+                    font-weight: bold;">
+            Reset Password
+          </a>
         </div>
-      `,
-      text: `Mã OTP reset password của bạn là: ${otp}. Mã có hiệu lực trong 5 phút.`,
-    };
+        
+        <p style="color: #666; font-size: 14px;">
+          Or copy and paste this link into your browser:
+        </p>
+        <p style="color: #4CAF50; word-break: break-all; font-size: 14px;">
+          ${resetLink}
+        </p>
+        
+        <p style="text-align: center; color: #666; font-size: 14px; margin-top: 30px;">
+          ⚠️ This link will expire in <strong>15 minutes</strong>
+        </p>
+        
+        <p style="color: #666; font-size: 14px; margin-top: 30px;">
+          If you did not request a password reset, please ignore this email or contact support if you have concerns.
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+        
+        <p style="color: #999; font-size: 12px; text-align: center;">
+          Oil & Gas Management System<br/>
+          This is an automated email, please do not reply.
+        </p>
+      </div>
+    `,
+    text: `Reset your password by clicking this link: ${resetLink}. This link will expire in 15 minutes.`,
+  };
 
-    try {
-      console.log('📧 Sending OTP email to:', email);
-      console.log('🔢 OTP:', otp);
-      
-      await sgMail.send(msg);
-      console.log('✅ Email sent successfully via SendGrid');
-      return { success: true };
-    } catch (error) {
-      console.error('❌ Error sending email:', error.message);
-      if (error.response) {
-        console.error('SendGrid error details:', error.response.body);
-      }
-      throw new Error('Failed to send email');
+  try {
+    console.log('📧 Sending password reset email to:', email);
+    console.log('🔗 Reset link:', resetLink);
+    
+    await sgMail.send(msg);
+    console.log('✅ Email sent successfully via SendGrid');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error sending email:', error.message);
+    if (error.response) {
+      console.error('SendGrid error details:', error.response.body);
     }
-  },
+    throw new Error('Failed to send email');
+  }
+},
 
   // OTP functions (nếu cần)
   async sendOtpEmail(email, otp) {
