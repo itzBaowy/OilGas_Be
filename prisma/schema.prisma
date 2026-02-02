@@ -98,7 +98,8 @@ model Warehouse {
 
   @@unique([name, location])
   @@map("Warehouse")
-
+  
+}
 // Sequence model for custom ID generation
 model Sequence {
   id        String  @id @default(auto()) @map("_id") @db.ObjectId
