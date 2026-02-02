@@ -1,6 +1,7 @@
 import prisma from "../prisma/connect.prisma.js";
 import { BadRequestException } from "../common/helpers/exception.helper.js";
 import { validateEquipmentData, validateEquipmentUpdateData } from "../common/helpers/validate.helper.js";
+import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 
 export const equipmentService = {
 
@@ -70,50 +71,30 @@ export const equipmentService = {
 
 //Get list equipments
     async getAllEquipment(req) {
-        const { page = 1, pageSize = 10, search, type, status, location } = req.query;
+        const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
-        const pageNum = parseInt(page);
-        const limit = parseInt(pageSize);
-        const skip = (pageNum - 1) * limit;
+        // Thêm điều kiện isDeleted
+        where.isDeleted = false;
 
-        const where = {
-            isDeleted: false
-        };
+        const resultPrismaPromise = prisma.equipment.findMany({
+            where: where,
+            skip: index,
+            take: pageSize,
+            orderBy: { createdAt: "desc" }
+        });
 
-        if (search) {
-            where.OR = [
-                { name: { contains: search, mode: "insensitive" } },
-                { serialNumber: { contains: search, mode: "insensitive" } }
-            ];
-        }
-        if (type) {
-            where.type = type;
-        }
+        const totalItemPromise = prisma.equipment.count({
+            where: where,
+        });
 
-        if (status) {
-            where.status = status;
-        }
-
-        if (location) {
-            where.location = { contains: location, mode: "insensitive" };
-        }
-
-        const [items, totalItem] = await Promise.all([
-            prisma.equipment.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy: { createdAt: "desc" }
-            }),
-            prisma.equipment.count({ where })
-        ]);
+        const [resultPrisma, totalItem] = await Promise.all([resultPrismaPromise, totalItemPromise]);
 
         return {
-            page: pageNum,
-            pageSize: limit,
-            totalItem,
-            totalPage: Math.ceil(totalItem / limit),
-            items
+            page: page,
+            pageSize: pageSize,
+            totalItem: totalItem,
+            totalPage: Math.ceil(totalItem / pageSize),
+            items: resultPrisma,
         };
     },
 
