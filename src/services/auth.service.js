@@ -191,107 +191,97 @@ export const authService = {
   },
   // Forgot Password - Gửi OTP qua email
   async forgotPassword(req) {
-  const { email } = req.body;
+    const { email } = req.body;
 
-  // Validate email
-  validateEmail(email);
+    // Validate email
+    validateEmail(email);
 
-  // Kiểm tra user có tồn tại không
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    throw new BadRequestException('No user found with this email');
-  }
-
-  // Tạo reset token (JWT)
-  const resetToken = tokenService.createResetToken(user.id);
-
-  // Lưu token vào database
-  const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
-  
-  await prisma.user.update({
-    where: { email },
-    data: {
-      resetPasswordToken: resetToken,
-      resetPasswordExpires: resetPasswordExpires,
-    },
-  });
-
-  // Tạo reset link
-  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-
-  // Gửi email với reset link
-  await emailService.sendResetPasswordEmail(email, resetLink);
-
-  return { message: 'Password reset link has been sent to your email' };
-},
-
-// Reset Password - Verify token và đổi password
-async resetPassword(req) {
-  const { token, newPassword } = req.body;
-
-  if (!token || !newPassword) {
-    throw new BadRequestException('Token and new password are required');
-  }
-
-  // Validate new password
-  validatePassword(newPassword);
-
-  // Verify token
-  let decoded;
-  try {
-    decoded = jsonwebtoken.verify(
-      token,
-      process.env.RESET_PASSWORD_SECRET || process.env.ACCESS_TOKEN_SECRET
-    );
-  } catch (error) {
-    if (error instanceof jsonwebtoken.TokenExpiredError) {
-      throw new BadRequestException('Reset link has expired. Please request a new one');
+    // Kiểm tra user có tồn tại không
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      throw new BadRequestException('No user found with this email');
     }
-    throw new BadRequestException('Invalid reset link');
-  }
 
-  // Tìm user với token
-  const user = await prisma.user.findFirst({
-    where: {
-      id: decoded.userId,
-      email: decoded.email,
-      resetPasswordToken: token,
-    },
-  });
+    // Tạo OTP 6 số
+    const otp = emailService.generateOtp();
 
-  if (!user) {
-    throw new BadRequestException('Invalid reset link');
-  }
+    // OTP có hiệu lực trong 5 phút
+    const resetPasswordExpires = new Date(Date.now() + 5 * 60 * 1000);
 
-  // Kiểm tra token đã hết hạn chưa
-  if (user.resetPasswordExpires && new Date() > user.resetPasswordExpires) {
-    // Token đã hết hạn → Xóa token
+    // Lưu OTP vào database
+    await prisma.user.update({
+      where: { email },
+      data: {
+        resetPasswordToken: otp, // Lưu OTP trực tiếp (hoặc có thể hash nếu muốn bảo mật hơn)
+        resetPasswordExpires: resetPasswordExpires,
+      },
+    });
+
+    // Gửi email với OTP
+    await emailService.sendResetPasswordEmail(email, otp);
+
+    return { message: 'OTP has been sent to your email' };
+  },
+
+  // Reset Password - Verify OTP và đổi password
+  async resetPassword(req) {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      throw new BadRequestException('Email, OTP and new password are required');
+    }
+
+    // Validate email
+    validateEmail(email);
+    // Validate new password
+    validatePassword(newPassword);
+
+    // Tìm user với email và OTP
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email,
+        resetPasswordToken: otp,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    // Kiểm tra OTP đã hết hạn chưa
+    if (user.resetPasswordExpires && new Date() > user.resetPasswordExpires) {
+      // OTP đã hết hạn → Xóa OTP và throw error
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+        },
+      });
+      throw new BadRequestException('OTP has expired. Please request a new one');
+    }
+
+    // Kiểm tra mật khẩu mới không trùng với mật khẩu cũ
+    // const isSamePassword = bcrypt.compareSync(newPassword, user.password);
+    // if (isSamePassword) {
+    //   throw new BadRequestException('New password must be different from old password');
+    // }
+
+    // Hash password mới
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+    // Cập nhật password và xóa OTP
     await prisma.user.update({
       where: { id: user.id },
       data: {
+        password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpires: null,
       },
     });
-    throw new BadRequestException('Reset link has expired. Please request a new one');
-  }
 
-  // Hash password mới
-  const hashedPassword = bcrypt.hashSync(newPassword, 10);
-
-  // Cập nhật password và xóa reset token
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      password: hashedPassword,
-      resetPasswordToken: null,
-      resetPasswordExpires: null,
-      lastPasswordChangeAt: new Date(),
-    },
-  });
-
-  return { message: 'Password has been reset successfully' };
-},
+    return { message: 'Password reset successfully' };
+  },
 
   async getLoginHistory(req) {
     const userId = req.user.id;
