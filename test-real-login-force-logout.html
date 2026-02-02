@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Real Login + Force Logout</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 900px;
+        margin: 30px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+      h1 {
+        color: #333;
+        border-bottom: 3px solid #007bff;
+        padding-bottom: 10px;
+      }
+      .status {
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 5px;
+        font-weight: bold;
+        text-align: center;
+      }
+      .logged-in {
+        background-color: #d4edda;
+        color: #155724;
+        border: 2px solid #c3e6cb;
+      }
+      .logged-out {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 2px solid #f5c6cb;
+      }
+      .forced-logout {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 2px solid #ffeaa7;
+        animation: pulse 1s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+      .section {
+        margin: 20px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 5px;
+      }
+      .form-group {
+        margin: 10px 0;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input {
+        padding: 10px;
+        width: 100%;
+        max-width: 400px;
+        font-size: 14px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 12px 20px;
+        margin: 5px;
+        font-size: 14px;
+        border-radius: 5px;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.3s;
+      }
+      .btn-primary {
+        background-color: #007bff;
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: #0056b3;
+      }
+      .btn-danger {
+        background-color: #dc3545;
+        color: white;
+      }
+      .btn-danger:hover {
+        background-color: #c82333;
+      }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+      #log {
+        background-color: #1e1e1e;
+        color: #00ff00;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+      }
+      .log-item {
+        padding: 3px;
+        border-bottom: 1px solid #333;
+      }
+      .info-box {
+        margin: 20px 0;
+        padding: 20px;
+        background-color: #e7f3ff;
+        border-left: 5px solid #2196F3;
+        border-radius: 5px;
+      }
+      .user-info {
+        background: #e8f5e9;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔐 Test Real Login + Force Logout</h1>
+      
+      <div id="status" class="status logged-out">
+        ❌ Chưa đăng nhập
+      </div>
+
+      <div id="loginSection" class="section">
+        <h3>📝 Login Form</h3>
+        <div class="form-group">
+          <label>Email:</label>
+          <input type="email" id="email" placeholder="user@example.com" value="admin@gmail.com" />
+        </div>
+        <div class="form-group">
+          <label>Password:</label>
+          <input type="password" id="password" placeholder="password" value="123456" />
+        </div>
+        <button class="btn-primary" onclick="login()">🔑 Login</button>
+      </div>
+
+      <div id="userSection" class="section" style="display: none;">
+        <h3>👤 User Information</h3>
+        <div id="userInfo" class="user-info"></div>
+        <button class="btn-danger" onclick="logout()">🚪 Logout</button>
+      </div>
+
+      <div class="section">
+        <h3>📋 Console Log:</h3>
+        <div id="log"></div>
+      </div>
+
+      <div class="info-box">
+        <h3>📝 Hướng dẫn Test:</h3>
+        <ol>
+          <li><strong>Mở file này trên 2 tab/trình duyệt</strong></li>
+          <li><strong>Tab 1:</strong> Nhập email/password → Click "Login" → Đăng nhập thành công</li>
+          <li><strong>Tab 2:</strong> Nhập cùng email/password → Click "Login"</li>
+          <li><strong>⚡ Tab 1 sẽ nhận được <code>force_logout</code> và tự động đăng xuất!</strong></li>
+        </ol>
+        <p><strong>Lưu ý:</strong> Server phải chạy tại <code>http://localhost:3000</code></p>
+      </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script>
+      const API_URL = 'http://localhost:3000/api';
+      let socket = null;
+      let accessToken = null;
+      let currentUser = null;
+
+      // Helper function để làm việc với cookies
+      function setCookie(name, value, days = 7) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+        document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+        addLog(`🍪 Đã lưu ${name} vào cookie`, 'info');
+      }
+
+      function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i = 0; i < ca.length; i++) {
+          let c = ca[i];
+          while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+          if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+      }
+
+      function deleteCookie(name) {
+        document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+        addLog(`🗑️ Đã xóa ${name} khỏi cookie`, 'info');
+      }
+
+      function addLog(message, type = 'info') {
+        const log = document.getElementById('log');
+        const item = document.createElement('div');
+        item.className = 'log-item';
+        const timestamp = new Date().toLocaleTimeString();
+        
+        let emoji = 'ℹ️';
+        if (type === 'success') emoji = '✅';
+        if (type === 'error') emoji = '❌';
+        if (type === 'warning') emoji = '⚠️';
+        if (type === 'logout') emoji = '🚪';
+        
+        item.innerHTML = `${emoji} <strong>[${timestamp}]</strong> ${message}`;
+        log.appendChild(item);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      function updateStatus(message, className) {
+        const status = document.getElementById('status');
+        status.textContent = message;
+        status.className = 'status ' + className;
+      }
+
+      function showUserSection(user) {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('userSection').style.display = 'block';
+        
+        const userInfo = document.getElementById('userInfo');
+        userInfo.innerHTML = `
+          <p><strong>ID:</strong> ${user.id}</p>
+          <p><strong>Email:</strong> ${user.email}</p>
+          <p><strong>Full Name:</strong> ${user.fullName || 'N/A'}</p>
+          <p><strong>Role:</strong> ${user.role?.name || 'N/A'}</p>
+        `;
+      }
+
+      function showLoginSection() {
+        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('userSection').style.display = 'none';
+      }
+
+      async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+          alert('⚠️ Vui lòng nhập email và password!');
+          return;
+        }
+
+        try {
+          addLog(`Đang gọi API login với email: ${email}...`, 'info');
+          
+          const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Login failed');
+          }
+
+          addLog(`✅ Login thành công!`, 'success');
+          
+          // API trả về: { status: "success", data: { accessToken, refreshToken } }
+          accessToken = data.data.accessToken;
+          const refreshToken = data.data.refreshToken;
+          
+          setCookie('accessToken', accessToken, 7);
+          setCookie('refreshToken', refreshToken, 7);
+          
+          addLog(`🔑 AccessToken: ${accessToken.substring(0, 20)}...`, 'info');
+
+          // Lấy thông tin user
+          await getUserInfo();
+
+        } catch (error) {
+          addLog(`❌ Login thất bại: ${error.message}`, 'error');
+          alert('Login thất bại: ' + error.message);
+        }
+      }
+
+      async function getUserInfo() {
+        try {
+          addLog('Đang lấy thông tin user...', 'info');
+          
+          const response = await fetch(`${API_URL}/auth/get-info`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+            },
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Get user info failed');
+          }
+
+          currentUser = data.data;
+          addLog(`👤 User info: ${currentUser.email} (ID: ${currentUser.id})`, 'success');
+          
+          showUserSection(currentUser);
+          updateStatus(`✅ Đã đăng nhập - ${currentUser.email}`, 'logged-in');
+
+          // Kết nối socket sau khi đăng nhập thành công
+          connectSocket(currentUser.id);
+
+        } catch (error) {
+          addLog(`❌ Get user info failed: ${error.message}`, 'error');
+        }
+      }
+
+      function connectSocket(userId) {
+        if (socket && socket.connected) {
+          addLog('Socket đã kết nối rồi', 'info');
+          return;
+        }
+
+        addLog(`🔌 Đang kết nối socket với userId: ${userId}...`, 'info');
+        socket = io(API_URL.replace('/api', ''));
+
+        socket.on('connect', () => {
+          addLog(`✅ Socket connected: ${socket.id}`, 'success');
+          
+          // QUAN TRỌNG: Đăng ký userId với socket server
+          socket.emit('register_user', userId);
+          addLog(`📝 Đã đăng ký userId ${userId} với socket server`, 'success');
+        });
+
+        // ⚡ QUAN TRỌNG: Lắng nghe force_logout
+        socket.on('force_logout', (data) => {
+          addLog(`⚠️⚠️⚠️ FORCE LOGOUT: ${data.message}`, 'warning');
+          updateStatus(`⚠️ ${data.message}`, 'forced-logout');
+          
+          setTimeout(() => {
+            alert('🚨 ' + data.message + '\n\nBạn sẽ bị đăng xuất!');
+            handleForceLogout();
+          }, 1000);
+        });
+
+        socket.on('disconnect', () => {
+          addLog('❌ Socket disconnected', 'error');
+        });
+
+        socket.on('connect_error', (error) => {
+          addLog(`❌ Socket connection error: ${error.message}`, 'error');
+        });
+      }
+
+      function handleForceLogout() {
+        addLog('🚪 Đang thực hiện logout do force_logout...', 'logout');
+        
+        // Xóa tokens từ cookies
+        deleteCookie('accessToken');
+        deleteCookie('refreshToken');
+        accessToken = null;
+        currentUser = null;
+        
+        // Ngắt socket
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+        
+        // Reset UI
+        showLoginSection();
+        updateStatus('❌ Đã bị đăng xuất do đăng nhập từ thiết bị khác', 'logged-out');
+        
+        addLog('✅ Đã đăng xuất hoàn tất', 'logout');
+      }
+
+      async function logout() {
+        try {
+          addLog('🚪 Đang gọi API logout...', 'logout');
+          
+          // Gọi API logout (protected route, cần Authorization header)
+          const response = await fetch(`${API_URL}/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            addLog('✅ API logout thành công - Token đã được blacklist', 'success');
+          } else {
+            const data = await response.json();
+            addLog(`⚠️ API logout warning: ${data.message || 'Unknown error'}`, 'warning');
+          }
+          
+        } catch (error) {
+          addLog(`⚠️ Logout API error: ${error.message}`, 'warning');
+        } finally {
+          // Vẫn logout ở client dù API lỗi
+          deleteCookie('accessToken');
+          deleteCookie('refreshToken');
+          accessToken = null;
+          currentUser = null;
+          
+          if (socket) {
+            socket.disconnect();
+            socket = null;
+          }
+          
+          showLoginSection();
+          updateStatus('❌ Đã đăng xuất', 'logged-out');
+          addLog('✅ Đã đăng xuất hoàn tất', 'logout');
+        }
+      }
+
+      // Check token khi load trang
+      window.onload = () => {
+        addLog('🚀 Trang đã sẵn sàng!', 'success');
+        
+        const savedToken = getCookie('accessToken');
+        if (savedToken) {
+          accessToken = savedToken;
+          addLog('🔑 Phát hiện token trong cookie, đang lấy thông tin user...', 'info');
+          getUserInfo();
+        } else {
+          addLog('📝 Vui lòng đăng nhập', 'info');
+        }
+      };
+    </script>
+  </body>
+</html>
