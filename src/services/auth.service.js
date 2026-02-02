@@ -203,11 +203,7 @@ export const authService = {
   }
 
   // Tạo reset token (JWT)
-  const resetToken = jsonwebtoken.sign(
-    { userId: user.id, email: user.email },
-    process.env.RESET_PASSWORD_SECRET || process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: '15m' } // Token có hiệu lực 15 phút
-  );
+  const resetToken = tokenService.createResetToken(user.id);
 
   // Lưu token vào database
   const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
