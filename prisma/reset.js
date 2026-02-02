@@ -7,29 +7,33 @@ async function main() {
     console.log('🗑️  Bắt đầu xóa toàn bộ dữ liệu database...');
 
     try {
-        // Xóa theo thứ tự để tránh lỗi foreign key
-        // Xóa BlackListToken
-        const deletedBlackListTokens = await prisma.blackListToken.deleteMany({});
-        console.log(`✅ Đã xóa ${deletedBlackListTokens.count} BlackListToken`);
+        // Lấy tất cả các model từ Prisma
+        const modelNames = Object.keys(prisma).filter(
+            (key) => 
+                typeof prisma[key] === 'object' && 
+                prisma[key] !== null && 
+                typeof prisma[key].deleteMany === 'function'
+        );
 
-        // Xóa LoginHistory
-        const deletedLoginHistory = await prisma.loginHistory.deleteMany({});
-        console.log(`✅ Đã xóa ${deletedLoginHistory.count} LoginHistory`);
+        console.log(`📋 Tìm thấy ${modelNames.length} collections: ${modelNames.join(', ')}`);
+        
+        let totalDeleted = 0;
+        
+        // Xóa tất cả models (MongoDB không có foreign key constraint)
+        for (const modelName of modelNames) {
+            try {
+                const deleted = await prisma[modelName].deleteMany({});
+                console.log(`✅ Đã xóa ${deleted.count} ${modelName}`);
+                totalDeleted += deleted.count;
+            } catch (error) {
+                console.log(`⚠️  Không thể xóa ${modelName}: ${error.message}`);
+            }
+        }
 
-        // Xóa Log
-        const deletedLogs = await prisma.log.deleteMany({});
-        console.log(`✅ Đã xóa ${deletedLogs.count} Log`);
-
-        // Xóa User
-        const deletedUsers = await prisma.user.deleteMany({});
-        console.log(`✅ Đã xóa ${deletedUsers.count} User`);
-
-        // Xóa Role
-        const deletedRoles = await prisma.role.deleteMany({});
-        console.log(`✅ Đã xóa ${deletedRoles.count} Role`);
-
-        console.log('✅ Reset database thành công! Tất cả dữ liệu đã được xóa.');
+        console.log('🎉 ========================================');
+        console.log(`✅ Reset database thành công! Đã xóa ${totalDeleted} documents.`);
         console.log('💡 Bạn có thể chạy "node prisma/seed.js" để khởi tạo lại dữ liệu mẫu.');
+        console.log('🎉 ========================================');
     } catch (error) {
         console.error('❌ Lỗi khi reset database:', error);
         throw error;

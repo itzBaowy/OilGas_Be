@@ -153,12 +153,134 @@ async function main() {
     console.log(`✅ Tạo user: ${user.email}`);
   }
 
-  console.log('✅ Seed data thành công!');
+  console.log('✅ Seed User thành công!');
+
+  // Seed Warehouse
+  console.log('🌱 Đang khởi tạo dữ liệu Warehouse...');
+  const adminUser = await prisma.user.findUnique({ where: { email: 'admin@gmail.com' } });
+
+  const warehouses = [
+    {
+      name: 'Kho trung tâm',
+      location: 'Houston, TX',
+      capacity: 10000,
+      description: 'Kho chính lưu trữ thiết bị dầu khí',
+      status: 'ACTIVE',
+      createdBy: adminUser.id,
+    },
+    {
+      name: 'Kho phụ A',
+      location: 'Dallas, TX',
+      capacity: 5000,
+      description: 'Kho phụ khu vực A',
+      status: 'ACTIVE',
+      createdBy: adminUser.id,
+    },
+    {
+      name: 'Kho bảo trì',
+      location: 'Austin, TX',
+      capacity: 3000,
+      description: 'Kho chuyên dụng cho thiết bị bảo trì',
+      status: 'MAINTENANCE',
+      createdBy: adminUser.id,
+    },
+  ];
+
+  for (const warehouse of warehouses) {
+    await prisma.warehouse.upsert({
+      where: { 
+        name_location: { 
+          name: warehouse.name, 
+          location: warehouse.location 
+        } 
+      },
+      update: {},
+      create: warehouse,
+    });
+    console.log(`✅ Tạo warehouse: ${warehouse.name}`);
+  }
+
+  console.log('✅ Seed Warehouse thành công!');
+
+  // Seed Sequence cho Equipment
+  console.log('🌱 Đang khởi tạo dữ liệu Sequence...');
+  await prisma.sequence.upsert({
+    where: { name: 'equipment' },
+    update: {},
+    create: {
+      name: 'equipment',
+      value: 0,
+    },
+  });
+  console.log('✅ Seed Sequence thành công!');
+
+  // Seed Equipment
+  console.log('🌱 Đang khởi tạo dữ liệu Equipment...');
+  
+  const equipmentTypes = ['Pump', 'Valve', 'Compressor', 'Sensor', 'Drilling Rig', 'Pipeline', 'Scada Unit'];
+  const locations = ['Platform A', 'Platform B', 'Onshore Facility', 'Storage Tank', 'Control Room'];
+  const manufacturers = ['Baker Hughes', 'Schlumberger', 'Halliburton', 'Weatherford', 'Cameron'];
+  
+  const equipments = [];
+  for (let i = 1; i <= 15; i++) {
+    const equipmentId = `EQ-${String(i).padStart(3, '0')}`;
+    const type = equipmentTypes[(i - 1) % equipmentTypes.length];
+    const location = locations[(i - 1) % locations.length];
+    const manufacturer = manufacturers[(i - 1) % manufacturers.length];
+    
+    equipments.push({
+      equipmentId,
+      name: `${type} ${equipmentId}`,
+      serialNumber: `SN-${Date.now()}-${i}`,
+      type,
+      status: i % 5 === 0 ? 'Maintenance' : (i % 7 === 0 ? 'Inactive' : 'Active'),
+      location,
+      manufacturer,
+      installDate: new Date(2020 + (i % 5), (i % 12), (i % 28) + 1),
+      description: `${type} được lắp đặt tại ${location}`,
+      isDeleted: false,
+      specifications: {
+        model: `Model-${type}-${i}`,
+        capacity: `${(i * 100)}L`,
+        pressure: `${(i * 10)}PSI`,
+        temperature: `${(i * 5)}°C`,
+        voltage: '220V',
+        power: `${(i * 2)}kW`,
+      },
+    });
+  }
+
+  for (const equipment of equipments) {
+    await prisma.equipment.upsert({
+      where: { equipmentId: equipment.equipmentId },
+      update: {},
+      create: equipment,
+    });
+    console.log(`✅ Tạo equipment: ${equipment.equipmentId} - ${equipment.name}`);
+  }
+
+  // Update sequence value
+  await prisma.sequence.update({
+    where: { name: 'equipment' },
+    data: { value: equipments.length },
+  });
+
+  console.log('✅ Seed Equipment thành công!');
+
+  console.log('🎉 ========================================');
+  console.log('🎉 Seed tất cả dữ liệu thành công!');
+  console.log('🎉 ========================================');
+  console.log('📊 Tổng kết:');
+  console.log(`   - Roles: ${roles.length}`);
+  console.log(`   - Users: ${users.length}`);
+  console.log(`   - Warehouses: ${warehouses.length}`);
+  console.log(`   - Equipment: ${equipments.length}`);
+  console.log('🎉 ========================================');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Lỗi khi seed dữ liệu:', e);
     process.exit(1);
   })
   .finally(async () => {
