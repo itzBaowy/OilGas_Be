@@ -98,4 +98,32 @@ model Warehouse {
 
   @@unique([name, location])
   @@map("Warehouse")
+
+// Sequence model for custom ID generation
+model Sequence {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  name      String  @unique // e.g., "equipment"
+  value     Int     @default(0)
+
+  @@map("Sequence")
+}
+
+model Equipment {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId     String   @unique // Custom format: EQ-001, EQ-002, etc.
+  name            String   @unique
+  serialNumber    String   @unique
+  type            String   // Enum-like: Pump, Valve, Compressor, Sensor, Drilling Rig, Pipeline, Scada Unit
+  status          String   @default("Active") // Active, Inactive, Maintenance
+  location        String
+  manufacturer    String?
+  installDate     DateTime
+  description     String?
+  isDeleted       Boolean  @default(false)
+  specifications  Json?    // Flexible technical specs
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("Equipment")
+
 }
