@@ -9,6 +9,7 @@ import { UAParser } from 'ua-parser-js';
 import requestIp from 'request-ip';
 import geoip from 'geoip-lite';
 import dotenv from 'dotenv';
+import jsonwebtoken from 'jsonwebtoken';
 dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL;
 

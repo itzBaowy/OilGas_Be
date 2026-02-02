@@ -85,6 +85,20 @@ model BlackListToken {
   @@map("BlackListToken")
 }
 
+model Warehouse {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  location    String
+  capacity    Int
+  description String?
+  status      String   @default("ACTIVE") // ACTIVE, MAINTENANCE
+  createdBy   String?  @db.ObjectId
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, location])
+  @@map("Warehouse")
+
 // Sequence model for custom ID generation
 model Sequence {
   id        String  @id @default(auto()) @map("_id") @db.ObjectId
@@ -111,4 +125,5 @@ model Equipment {
   updatedAt       DateTime @updatedAt
 
   @@map("Equipment")
+
 }
