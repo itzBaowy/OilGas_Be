@@ -16,7 +16,7 @@ export const tokenService = {
         };
     },
     createResetToken(userId) {
-        const resetToken = jsonwebtoken.sign({ userId: userId }, process.env.RESET_TOKEN_SECRET, { expiresIn: '15m' });
+        const resetToken = jsonwebtoken.sign({ userId: userId }, RESET_TOKEN_SECRET, { expiresIn: '15m' });
         return resetToken;
     },
 
