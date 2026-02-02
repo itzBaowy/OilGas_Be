@@ -53,5 +53,10 @@ export const authController = {
           const result = await authService.logout(req);
           const response = responseSuccess(result, `Logout successfully`);
           res.status(response.statusCode).json(response);
+     },
+     async verifyDeviceOtp(req, res, next) {
+          const result = await authService.verifyDeviceOtp(req);
+          const response = responseSuccess(result, `Device verified successfully`);
+          res.status(response.statusCode).json(response);
      }
 };

@@ -9,6 +9,7 @@ import { UAParser } from 'ua-parser-js';
 import requestIp from 'request-ip';
 import geoip from 'geoip-lite';
 import dotenv from 'dotenv';
+import { getUserDeviceMap } from '../common/socket/init.socket.js';
 import jsonwebtoken from 'jsonwebtoken';
 dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL;
@@ -52,7 +53,7 @@ export const authService = {
   },
 
   async login(req) {
-    const { email, password } = req.body;
+    const { email, password, deviceId } = req.body;
     const user = await prisma.user.findUnique({
       where: { email },
       include: { role: true }
@@ -63,6 +64,37 @@ export const authService = {
     // Compare Password
     const isMatch = bcrypt.compareSync(password, user.password);
     if (!isMatch) throw new BadRequestException('Wrong password');
+
+    // Kiểm tra xem có device nào đang online không
+    const userDeviceMap = getUserDeviceMap();
+    const existingDevice = userDeviceMap.get(user.id);
+
+    // Nếu có device đang online và deviceId khác nhau → yêu cầu OTP
+    if (existingDevice && deviceId && existingDevice.deviceId !== deviceId) {
+      const otp = emailService.generateOtp();
+      const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
+      
+      // Lưu OTP vào database
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: otp,
+          resetPasswordExpires: otpExpires,
+        },
+      });
+
+      await emailService.sendOtpEmail(email, otp);
+
+      // Trả về yêu cầu OTP
+      return {
+        requireOtp: true,
+        message: 'OTP has been sent to your email. Please verify to login from new device.',
+        email,
+        deviceId
+      };
+    }
+
+    // Không cần OTP → login bình thường
     // Lưu lịch sử đăng nhập
     const clientIp = requestIp.getClientIp(req) || '127.0.0.1';
 
@@ -84,6 +116,73 @@ export const authService = {
       }
     });
     // tạo token
+    const tokens = tokenService.createTokens(user.id);
+
+    return tokens;
+  },
+
+  async verifyDeviceOtp(req) {
+    const { email, deviceId, otp } = req.body;
+
+    if (!email || !deviceId || !otp) {
+      throw new BadRequestException('Email, deviceId and OTP are required');
+    }
+
+    // Tìm user với email và OTP
+    const user = await prisma.user.findFirst({
+      where: {
+        email: email,
+        resetPasswordToken: otp,
+      },
+      include: { role: true }
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid OTP or email');
+    }
+
+    // Kiểm tra OTP hết hạn
+    if (!user.resetPasswordExpires || new Date() > user.resetPasswordExpires) {
+      // Xóa OTP hết hạn
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+        },
+      });
+      throw new BadRequestException('OTP expired');
+    }
+
+    // OTP đúng → xóa OTP khỏi database
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+      },
+    });
+
+    // Lưu lịch sử đăng nhập
+    const clientIp = requestIp.getClientIp(req) || '127.0.0.1';
+    const geo = geoip.lookup(clientIp);
+    const location = geo ? `${geo.city}, ${geo.country}` : 'Unknown Location';
+    const userAgent = req.headers['user-agent'];
+    const parser = new UAParser(userAgent);
+    const deviceName = `${parser.getBrowser().name} on ${parser.getOS().name}`;
+
+    await prisma.loginHistory.create({
+      data: {
+        userId: user.id,
+        ip: clientIp,
+        location: location,
+        device: deviceName,
+        browser: parser.getBrowser().name,
+        os: parser.getOS().name
+      }
+    });
+
+    // Tạo tokens
     const tokens = tokenService.createTokens(user.id);
 
     return tokens;

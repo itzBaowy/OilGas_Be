@@ -151,6 +151,17 @@
         <button class="btn-primary" onclick="login()">🔑 Login</button>
       </div>
 
+      <div id="otpSection" class="section" style="display: none;">
+        <h3>🔐 Verify OTP for New Device</h3>
+        <p style="color: #856404;">You are logging in from a new device. Please enter the OTP sent to your email.</p>
+        <div class="form-group">
+          <label>OTP Code:</label>
+          <input type="text" id="otpCode" placeholder="123456" maxlength="6" />
+        </div>
+        <button class="btn-primary" onclick="verifyOtp()">✅ Verify OTP</button>
+        <button class="btn-danger" onclick="cancelOtp()">❌ Cancel</button>
+      </div>
+
       <div id="userSection" class="section" style="display: none;">
         <h3>👤 User Information</h3>
         <div id="userInfo" class="user-info"></div>
@@ -165,12 +176,15 @@
       <div class="info-box">
         <h3>📝 Hướng dẫn Test:</h3>
         <ol>
-          <li><strong>Mở file này trên 2 tab/trình duyệt</strong></li>
-          <li><strong>Tab 1:</strong> Nhập email/password → Click "Login" → Đăng nhập thành công</li>
-          <li><strong>Tab 2:</strong> Nhập cùng email/password → Click "Login"</li>
-          <li><strong>⚡ Tab 1 sẽ nhận được <code>force_logout</code> và tự động đăng xuất!</strong></li>
+          <li><strong>Mở file này trên Tab 1 (Browser 1):</strong> Nhập email/password → Click "Login" → Đăng nhập thành công</li>
+          <li><strong>Mở file này trên Tab 2 hoặc Browser khác:</strong> Nhập cùng email/password → Click "Login"</li>
+          <li><strong>⚡ Tab 2 sẽ yêu cầu OTP (vì đang có thiết bị khác online)</strong></li>
+          <li><strong>📧 Kiểm tra email → Nhập OTP 6 số → Click "Verify OTP"</strong></li>
+          <li><strong>✅ Tab 2 đăng nhập thành công → Tab 1 sẽ bị force logout!</strong></li>
+          <li><strong>🔄 Nếu login lại trên cùng browser/tab → không cần OTP (cùng deviceId)</strong></li>
         </ol>
         <p><strong>Lưu ý:</strong> Server phải chạy tại <code>http://localhost:3000</code></p>
+        <p><strong>OTP:</strong> Chỉ yêu cầu khi đang có device khác online. Nếu không có device nào online → login trực tiếp.</p>
       </div>
     </div>
 
@@ -181,6 +195,7 @@
       let accessToken = null;
       let currentUser = null;
       let deviceId = null;
+      let pendingOtpData = null; // Lưu data khi cần verify OTP
 
       // Lấy hoặc tạo deviceId từ localStorage
       function getOrCreateDeviceId() {
@@ -244,6 +259,7 @@
       }
 
       function showUserSection(user) {
+        document.getElementById('otpSection').style.display = 'none';
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('userSection').style.display = 'block';
         
@@ -257,7 +273,13 @@
       }
 
       function showLoginSection() {
-        document.getElementById('loginSection').style.display = 'block';
+        document.getElementById('otpSection').style.display = 'none';
+        document.getElementById('userSection').style.display = 'none';
+      }
+
+      function showOtpSection() {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('otpSection').style.display = 'block';
         document.getElementById('userSection').style.display = 'none';
       }
 
@@ -278,7 +300,7 @@
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email, password, deviceId }),
           });
 
           const data = await response.json();
@@ -287,6 +309,20 @@
             throw new Error(data.message || 'Login failed');
           }
 
+          // Kiểm tra nếu cần OTP
+          if (data.data.requireOtp) {
+            addLog(`⚠️ Yêu cầu OTP cho thiết bị mới`, 'warning');
+            addLog(`📧 OTP đã được gửi đến email: ${email}`, 'info');
+            
+            // Lưu data để dùng khi verify
+            pendingOtpData = { email, deviceId };
+            
+            showOtpSection();
+            updateStatus('⏳ Chờ xác thực OTP...', 'forced-logout');
+            return;
+          }
+
+          // Login thành công không cần OTP
           addLog(`✅ Login thành công!`, 'success');
           
           // API trả về: { status: "success", data: { accessToken, refreshToken } }
@@ -305,6 +341,70 @@
           addLog(`❌ Login thất bại: ${error.message}`, 'error');
           alert('Login thất bại: ' + error.message);
         }
+      }
+
+      async function verifyOtp() {
+        const otp = document.getElementById('otpCode').value;
+
+        if (!otp || otp.length !== 6) {
+          alert('⚠️ Vui lòng nhập OTP 6 số!');
+          return;
+        }
+
+        if (!pendingOtpData) {
+          alert('❌ Không có thông tin OTP!');
+          return;
+        }
+
+        try {
+          addLog(`Đang xác thực OTP...`, 'info');
+          
+          const response = await fetch(`${API_URL}/auth/verify-device-otp`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: pendingOtpData.email,
+              deviceId: pendingOtpData.deviceId,
+              otp: otp
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'OTP verification failed');
+          }
+
+          addLog(`✅ OTP xác thực thành công!`, 'success');
+
+          // Lưu tokens
+          accessToken = data.data.accessToken;
+          const refreshToken = data.data.refreshToken;
+          
+          setCookie('accessToken', accessToken, 7);
+          setCookie('refreshToken', refreshToken, 7);
+
+          // Clear OTP data
+          pendingOtpData = null;
+          document.getElementById('otpCode').value = '';
+
+          // Lấy thông tin user
+          await getUserInfo();
+
+        } catch (error) {
+          addLog(`❌ OTP verification failed: ${error.message}`, 'error');
+          alert('OTP verification failed: ' + error.message);
+        }
+      }
+
+      function cancelOtp() {
+        pendingOtpData = null;
+        document.getElementById('otpCode').value = '';
+        showLoginSection();
+        updateStatus('❌ Đã hủy xác thực', 'logged-out');
+        addLog('Đã hủy xác thực OTP', 'info');
       }
 
       async function getUserInfo() {

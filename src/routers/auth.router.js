@@ -351,4 +351,29 @@ authRouter.get("/get-login-history", protect, authController.getLoginHistory);
  */
 authRouter.post("/logout", protect, authController.logout);
 
+/**
+ * @swagger
+ * /api/auth/verify-device-otp:
+ *   post:
+ *     summary: Xác thực OTP cho thiết bị mới
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               deviceId:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Xác thực OTP thành công
+ */
+authRouter.post("/verify-device-otp", authController.verifyDeviceOtp);
+
 export default authRouter;
