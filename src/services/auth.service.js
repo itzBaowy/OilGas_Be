@@ -10,7 +10,6 @@ import requestIp from 'request-ip';
 import geoip from 'geoip-lite';
 import dotenv from 'dotenv';
 import { getUserDeviceMap } from '../common/socket/init.socket.js';
-import jsonwebtoken from 'jsonwebtoken';
 dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -73,7 +72,7 @@ export const authService = {
     if (existingDevice && deviceId && existingDevice.deviceId !== deviceId) {
       const otp = emailService.generateOtp();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
-      
+
       // Lưu OTP vào database
       await prisma.user.update({
         where: { id: user.id },
