@@ -56,8 +56,6 @@ authRouter.post('/register', authController.register);
  *                 type: string
  *               password:
  *                 type: string
- *               deviceId:
- *                 type: string
  *     responses:
  *       200:
  *         description: Đăng nhập thành công
