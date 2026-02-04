@@ -54,10 +54,10 @@ export const authService = {
   async login(req) {
     const { email, password, deviceId } = req.body;
 
-    // Validate deviceId bắt buộc
-    if (!deviceId) {
-      throw new BadRequestException('Device ID is required');
-    }
+    // // Validate deviceId bắt buộc
+    // if (!deviceId) {
+    //   throw new BadRequestException('Device ID is required');
+    // }
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -75,7 +75,7 @@ export const authService = {
     const existingDevice = userDeviceMap.get(user.id);
 
     // Nếu có device đang online và deviceId khác nhau → yêu cầu OTP
-    if (existingDevice && deviceId && existingDevice.deviceId !== deviceId) {
+    if (existingDevice && existingDevice.deviceId !== deviceId) {
       const otp = emailService.generateOtp();
       const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
 
