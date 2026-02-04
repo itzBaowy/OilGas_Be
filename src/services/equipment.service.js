@@ -6,21 +6,21 @@ import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 export const equipmentService = {
 
     async generateCustomId() {
-    try {
-        
-        const updatedSequence = await prisma.sequence.upsert({
-            where: { name: "equipment" },
-            update: { value: { increment: 1 } }, // Nếu có rồi thì +1
-            create: { name: "equipment", value: 1 } // Nếu chưa có thì tạo mới bằng 1
-        });
+        try {
 
-        const nextValue = updatedSequence.value;
+            const updatedSequence = await prisma.sequence.upsert({
+                where: { name: "equipment" },
+                update: { value: { increment: 1 } }, // Nếu có rồi thì +1
+                create: { name: "equipment", value: 1 } // Nếu chưa có thì tạo mới bằng 1
+            });
 
-        // Trả về định dạng EQ-001, EQ-002...
-        return `EQ-${String(nextValue).padStart(3, '0')}`;
-    } catch (error) {
-        throw new Error(`Failed to generate custom ID: ${error.message}`);
-    }
+            const nextValue = updatedSequence.value;
+
+            // Trả về định dạng EQ-001, EQ-002...
+            return `EQ-${String(nextValue).padStart(3, '0')}`;
+        } catch (error) {
+            throw new Error(`Failed to generate custom ID: ${error.message}`);
+        }
     },
 
 
@@ -28,7 +28,18 @@ export const equipmentService = {
         // Validate equipment data using helper
         const { parsedInstallDate } = validateEquipmentData(req.body);
 
-        const { name, serialNumber, type, status, location, manufacturer, description, specifications } = req.body;
+        const {
+            name,
+            serialNumber,
+            type,
+            status,
+            location,
+            manufacturer,
+            description,
+            specifications,
+            lastMaintenanceDate,
+            nextMaintenanceDate
+        } = req.body;
 
         // Check if name already exists
         const existingName = await prisma.equipment.findUnique({
@@ -56,10 +67,12 @@ export const equipmentService = {
                 name,
                 serialNumber,
                 type,
-                status: status ,
+                status: status,
                 location,
                 manufacturer,
                 installDate: parsedInstallDate,
+                lastMaintenanceDate: lastMaintenanceDate ? new Date(lastMaintenanceDate) : null,
+                nextMaintenanceDate: nextMaintenanceDate ? new Date(nextMaintenanceDate) : null,
                 description,
                 specifications: specifications || {},
                 isDeleted: false
@@ -69,7 +82,7 @@ export const equipmentService = {
         return equipment;
     },
 
-//Get list equipments
+    //Get list equipments
     async getAllEquipment(req) {
         const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
@@ -110,10 +123,21 @@ export const equipmentService = {
         return equipment;
     },
 
-//Update equipment by equipmentId (EQ-001, EQ-002, etc.)
+    //Update equipment by equipmentId (EQ-001, EQ-002, etc.)
     async updateEquipment(req) {
         const { id: equipmentId } = req.params;
-        const { name, type, location, status, specifications, description } = req.body;
+        const {
+            name,
+            type,
+            location,
+            status,
+            specifications,
+            description,
+            lastMaintenanceDate,
+            nextMaintenanceDate,
+            manufacturer,
+            installDate
+        } = req.body;
 
         // Check if equipment exists
         const existingEquipment = await prisma.equipment.findUnique({
@@ -147,9 +171,12 @@ export const equipmentService = {
         if (type) updateData.type = type;
         if (status) updateData.status = status;
         if (location) updateData.location = location;
+        if (manufacturer !== undefined) updateData.manufacturer = manufacturer;
         if (description !== undefined) updateData.description = description;
         if (specifications !== undefined) updateData.specifications = specifications;
-
+        if (lastMaintenanceDate !== undefined) updateData.lastMaintenanceDate = lastMaintenanceDate ? new Date(lastMaintenanceDate) : null;
+        if (nextMaintenanceDate !== undefined) updateData.nextMaintenanceDate = nextMaintenanceDate ? new Date(nextMaintenanceDate) : null;
+        if (installDate !== undefined) updateData.installDate = new Date(installDate);
         // Update equipment
         const updatedEquipment = await prisma.equipment.update({
             where: { equipmentId },
@@ -179,5 +206,47 @@ export const equipmentService = {
         });
 
         return deletedEquipment;
+    },
+    async getMaintenanceHistory(equipmentId, queryParams = {}) {
+        // First, get the equipment by equipmentId (EQ-001, EQ-002, etc.) to get the ObjectId
+        const equipment = await prisma.equipment.findUnique({
+            where: { equipmentId }
+        });
+
+        if (!equipment || equipment.isDeleted) {
+            throw new BadRequestException("Equipment not found");
+        }
+
+        // Build where clause with optional date range
+        const whereClause = {
+            equipmentId: equipment.id // Use ObjectId here
+        };
+
+        // Add date range filter if provided
+        if (queryParams.startDate || queryParams.endDate) {
+            whereClause.date = {};
+
+            if (queryParams.startDate) {
+                whereClause.date.gte = new Date(queryParams.startDate);
+            }
+
+            if (queryParams.endDate) {
+                whereClause.date.lte = new Date(queryParams.endDate);
+            }
+        }
+
+        // Get maintenance history sorted by date descending (newest first)
+        const maintenanceHistory = await prisma.maintenanceHistory.findMany({
+            where: whereClause,
+            orderBy: {
+                date: 'desc'
+            }
+        });
+
+        // Return empty array with appropriate message if no records found
+        return maintenanceHistory;
+    },
+    getStatuses() {
+        return ["Active", "Inactive", "Maintenance"];
     }
 };
