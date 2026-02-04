@@ -110,21 +110,40 @@ model Sequence {
 }
 
 model Equipment {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  equipmentId     String   @unique // Custom format: EQ-001, EQ-002, etc.
-  name            String   @unique
-  serialNumber    String   @unique
-  type            String   // Enum-like: Pump, Valve, Compressor, Sensor, Drilling Rig, Pipeline, Scada Unit
-  status          String   @default("Active") // Active, Inactive, Maintenance
-  location        String
-  manufacturer    String?
-  installDate     DateTime
-  description     String?
-  isDeleted       Boolean  @default(false)
-  specifications  Json?    // Flexible technical specs
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String              @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId           String              @unique // Custom format: EQ-001, EQ-002, etc.
+  name                  String              @unique
+  serialNumber          String              @unique
+  type                  String              // Enum-like: Pump, Valve, Compressor, Sensor, Drilling Rig, Pipeline, Scada Unit
+  status                String              @default("Active") // Active, Inactive, Maintenance
+  location              String
+  manufacturer          String?
+  installDate           DateTime
+  lastMaintenanceDate   DateTime?
+  nextMaintenanceDate   DateTime?
+  description           String?
+  isDeleted             Boolean             @default(false)
+  specifications        Json?               // Flexible technical specs
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  maintenanceHistory    MaintenanceHistory[]
 
   @@map("Equipment")
+}
+
+model MaintenanceHistory {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId   String     @db.ObjectId
+  equipment     Equipment  @relation(fields: [equipmentId], references: [id])
+  date          DateTime
+  type          String     // Preventive, Corrective, Calibration
+  description   String
+  performedBy   String
+  status        String     // Completed, Pending, Cancelled
+  cost          Float?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("MaintenanceHistory")
 
 }

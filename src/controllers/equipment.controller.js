@@ -45,5 +45,15 @@ export const equipmentController = {
         const result = await equipmentService.deleteEquipment(req.params.id);
         const response = responseSuccess(result, "Equipment deleted successfully");
         res.status(response.statusCode).json(response);
+    },
+    async getMaintenanceHistory(req, res, next) {
+        const result = await equipmentService.getMaintenanceHistory(req.params.equipmentId, req.query);
+        const response = responseSuccess(result, "Maintenance history retrieved successfully");
+        res.status(response.statusCode).json(response);
+    },
+    async getStatuses(req, res, next) {
+        const result = equipmentService.getStatuses();
+        const response = responseSuccess(result, "Equipment statuses retrieved successfully");
+        res.status(response.statusCode).json(response);
     }
 };
