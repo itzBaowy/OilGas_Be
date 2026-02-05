@@ -17,4 +17,14 @@ export const userController = {
       const response = responseSuccess(result, `avatarCloud user successfully`);
       res.status(response.statusCode).json(response);
    },
+   async updateUser(req, res, next) {
+      const result = await userService.updateUser(req);
+      const response = responseSuccess(result, `Update user successfully`);
+      res.status(response.statusCode).json(response);
+   },
+   async deleteUser(req, res, next) {
+      const result = await userService.deleteUser(req);
+      const response = responseSuccess(result, `Delete user successfully`);
+      res.status(response.statusCode).json(response);
+   },
 };

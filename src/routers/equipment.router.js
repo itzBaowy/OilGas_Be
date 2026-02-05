@@ -191,6 +191,37 @@ equipmentRouter.get("/", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), eq
 
 /**
  * @swagger
+ * /api/equipments/statuses:
+ *   get:
+ *     summary: Lấy danh sách Statuses (Dropdown)
+ *     description: Get list of available equipment statuses for dropdown selection
+ *     tags: [Equipment]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["Active", "Inactive", "Maintenance"]
+ *                 message:
+ *                   type: string
+ *                   example: Equipment statuses retrieved successfully
+ */
+equipmentRouter.get("/statuses", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getStatuses);
+
+/**
+ * @swagger
  * /api/equipments/{id}:
  *   get:
  *     summary: Lấy chi tiết thiết bị (Get equipment by ID)
@@ -287,4 +318,114 @@ equipmentRouter.put("/:id", protect, checkPermission(["UPDATE_EQUIPMENT", "ALL"]
  */
 equipmentRouter.delete("/:id", protect, checkPermission(["DELETE_EQUIPMENT", "ALL"]), equipmentController.deleteEquipment);
 
+/**
+ * @swagger
+ * /api/equipments/{equipmentId}/maintenance-history:
+ *   get:
+ *     summary: Lấy lịch sử bảo trì thiết bị (Get maintenance history)
+ *     tags: [Equipment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: equipmentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Equipment ID (e.g., EQ-001)
+ *         example: EQ-001
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for filtering (YYYY-MM-DD)
+ *         example: 2024-01-01
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for filtering (YYYY-MM-DD)
+ *         example: 2024-12-31
+ *     responses:
+ *       200:
+ *         description: Success (returns empty array if no maintenance records found)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: Maintenance record ID (MongoDB ObjectId)
+ *                         example: 507f1f77bcf86cd799439011
+ *                       equipmentId:
+ *                         type: string
+ *                         description: Equipment ObjectId
+ *                         example: 507f191e810c19729de860ea
+ *                       date:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Maintenance Date
+ *                         example: 2024-12-01T00:00:00.000Z
+ *                       type:
+ *                         type: string
+ *                         enum: [Inspection, Repair, Replacement, Preventive, Corrective, Calibration]
+ *                         description: Maintenance Type
+ *                         example: Inspection
+ *                       description:
+ *                         type: string
+ *                         description: Description of maintenance work
+ *                         example: Routine inspection and oil change
+ *                       performedBy:
+ *                         type: string
+ *                         description: Performed By (technician/engineer name)
+ *                         example: John Engineer
+ *                       status:
+ *                         type: string
+ *                         enum: [Completed, Pending, Cancelled]
+ *                         description: Maintenance status
+ *                         example: Completed
+ *                       cost:
+ *                         type: number
+ *                         description: Maintenance cost (USD)
+ *                         example: 1500
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                 message:
+ *                   type: string
+ *                   example: Maintenance history retrieved successfully
+ *       404:
+ *         description: Equipment not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 data:
+ *                   type: null
+ *                 message:
+ *                   type: string
+ *                   example: Equipment not found
+ *                 errorCode:
+ *                   type: string
+ *                   example: EQUIPMENT_NOT_FOUND
+ */
+equipmentRouter.get("/:equipmentId/maintenance-history", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getMaintenanceHistory);
 export default equipmentRouter;

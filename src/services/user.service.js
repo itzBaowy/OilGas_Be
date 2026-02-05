@@ -119,6 +119,84 @@ export const userService = {
             },
             include: { role: true }
         });
+    },
+
+    async updateUser(req) {
+        const { userId } = req.params;
+        const { fullName, phoneNumber, roleName, status } = req.body;
+
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+        if (!userExist) {
+            throw new BadRequestException("User not found");
+        }
+
+        // Build update data
+        const updateData = {};
+        if (fullName !== undefined) updateData.fullName = fullName;
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+        if (status !== undefined) {
+            if (!['ACTIVE', 'INACTIVE'].includes(status)) {
+                throw new BadRequestException("Invalid status. Must be ACTIVE or INACTIVE");
+            }
+            updateData.status = status;
+            updateData.isActive = status === 'ACTIVE';
+        }
+
+        // If roleName is provided, find and update role
+        if (roleName !== undefined) {
+            const role = await prisma.role.findUnique({
+                where: { name: roleName }
+            });
+            if (!role) {
+                throw new BadRequestException("Role does not exist");
+            }
+            updateData.roleId = role.id;
+        }
+
+        // Update user
+        return await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            include: { role: true }
+        });
+    },
+
+    async deleteUser(req) {
+        const { userId } = req.params;
+
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { role: true }
+        });
+        if (!userExist) {
+            throw new BadRequestException("User not found");
+        }
+
+        // Không cho phép xóa chính mình
+        if (userId === req.user.id) {
+            throw new BadRequestException("Cannot delete yourself");
+        }
+
+        // Không cho phép xóa Admin
+        if (userExist.role.name === 'Admin') {
+            throw new BadRequestException("Cannot delete Admin user");
+        }
+
+        // Delete user's avatar from cloudinary if exists
+        if (userExist.avatarCloudId && userExist.avatarCloudId !== 'public/images/default_avatar') {
+            await cloudinary.uploader.destroy(userExist.avatarCloudId);
+        }
+
+        // Delete user
+        await prisma.user.delete({
+            where: { id: userId }
+        });
+
+        return true;
     }
 
 };

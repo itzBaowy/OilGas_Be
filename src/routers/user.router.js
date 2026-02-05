@@ -263,4 +263,126 @@ userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userCon
  *         description: Không có quyền CREATE_USER
  */
 userRouter.post("/", protect, checkPermission(['CREATE_USER', 'ALL']), userController.createUsers);
+
+/**
+ * @swagger
+ * /api/users/{userId}:
+ *   put:
+ *     summary: Cập nhật thông tin người dùng
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của người dùng cần cập nhật
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 example: Nguyễn Văn B
+ *                 description: Họ và tên đầy đủ
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "0901234567"
+ *                 description: Số điện thoại
+ *               roleName:
+ *                 type: string
+ *                 example: Supervisor
+ *                 description: Tên role mới
+ *               status:
+ *                 type: string
+ *                 enum: [ACTIVE, INACTIVE]
+ *                 example: ACTIVE
+ *                 description: Trạng thái tài khoản
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Update user successfully
+ *                 content:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     fullName:
+ *                       type: string
+ *                     phoneNumber:
+ *                       type: string
+ *                     roleId:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Dữ liệu không hợp lệ
+ *       404:
+ *         description: Người dùng không tồn tại
+ *       403:
+ *         description: Không có quyền EDIT_USER
+ */
+userRouter.put("/:userId", protect, checkPermission(['EDIT_USER', 'ALL']), userController.updateUser);
+
+/**
+ * @swagger
+ * /api/users/{userId}:
+ *   delete:
+ *     summary: Xóa người dùng
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của người dùng cần xóa
+ *     responses:
+ *       200:
+ *         description: Xóa thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Delete user successfully
+ *                 content:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Không thể xóa user đang đăng nhập hoặc Admin
+ *       404:
+ *         description: Người dùng không tồn tại
+ *       403:
+ *         description: Không có quyền DELETE_USER
+ */
+userRouter.delete("/:userId", protect, checkPermission(['DELETE_USER', 'ALL']), userController.deleteUser);
+
 export default userRouter;
