@@ -4,6 +4,7 @@ import cloudinary from "../common/cloudinary/init.cloudinary.js";
 import { BadRequestException } from "../common/helpers/exception.helper.js";
 import bcrypt from "bcryptjs";
 import { validatePassword, validateEmail } from "../common/helpers/validate.helper.js";
+import { notifyUserCreated, notifyUserUpdated, notifyUserDeleted } from "../common/helpers/notification.helper.js";
 
 const FOLDER_IMAGE = "public/images";
 export const userService = {
@@ -107,7 +108,7 @@ export const userService = {
         const hashedPassword = bcrypt.hashSync(password, 10);
 
         // Create User
-        return await prisma.user.create({
+        const newUser = await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
@@ -119,6 +120,10 @@ export const userService = {
             },
             include: { role: true }
         });
+        // Send welcome notification
+        await notifyUserCreated(newUser, req.user?.id);
+
+        return newUser;
     },
 
     async updateUser(req) {
@@ -157,11 +162,16 @@ export const userService = {
         }
 
         // Update user
-        return await prisma.user.update({
+        const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: updateData,
             include: { role: true }
         });
+
+        // Send update notification
+        await notifyUserUpdated(userId, updateData, req.user?.id);
+
+        return updatedUser;
     },
 
     async deleteUser(req) {
@@ -185,6 +195,9 @@ export const userService = {
         if (userExist.role.name === 'Admin') {
             throw new BadRequestException("Cannot delete Admin user");
         }
+
+        // Send deletion notification before deleting
+        await notifyUserDeleted(userId, req.user?.id);
 
         // Delete user's avatar from cloudinary if exists
         if (userExist.avatarCloudId && userExist.avatarCloudId !== 'public/images/default_avatar') {

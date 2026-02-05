@@ -37,8 +37,10 @@ export const initSocket = (httpServer) => {
                 // Lưu userId, deviceId và socketId vào map
                 socket.userId = userId;
                 socket.deviceId = deviceId;
+                // Join room theo userId để dễ emit notification
+                socket.join(userId);
                 userDeviceMap.set(userId, { socketId: socket.id, deviceId });
-                console.log(`User ${userId} registered with socket ${socket.id}, device ${deviceId}`);
+                console.log(`User ${userId} registered with socket ${socket.id}, device ${deviceId}, joined room ${userId}`);
             }
         });
         
