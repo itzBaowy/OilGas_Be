@@ -6,6 +6,7 @@ import roleRouter from './role.router.js';
 import warehouseRouter from './warehouse.router.js';
 import equipmentRouter from './equipment.router.js';
 import { inventoryRouter } from './inventory.router.js';
+import notificationRouter from './notification.router.js';
 
 const rootRouter = express.Router()
 
@@ -16,6 +17,7 @@ rootRouter.use("/roles", roleRouter)
 rootRouter.use("/warehouses", warehouseRouter)
 rootRouter.use("/equipments", equipmentRouter)
 rootRouter.use("/inventory", inventoryRouter)
+rootRouter.use("/notifications", notificationRouter)
 
 
 export default rootRouter

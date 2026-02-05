@@ -31,6 +31,8 @@ model User {
   resetPasswordExpires DateTime?
   lastPasswordChangeAt DateTime? @default(now()) 
   loginHistory         LoginHistory[]
+  notifications        Notification[] @relation("RecipientNotifications")
+  createdNotifications Notification[] @relation("CreatorNotifications")
   @@map("User")
 }
 
@@ -186,4 +188,24 @@ model InventoryLedger {
   createdAt       DateTime  @default(now())
 
   @@map("InventoryLedger")
+}
+
+// Notification Model - System notifications for users
+model Notification {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  recipientId String   @db.ObjectId
+  recipient   User     @relation("RecipientNotifications", fields: [recipientId], references: [id])
+  title       String
+  message     String
+  type        String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR, SYSTEM
+  category    String?  // USER, ROLE, EQUIPMENT, WAREHOUSE, INVENTORY, MAINTENANCE, SYSTEM
+  relatedId   String?  // ID của entity liên quan (userId, equipmentId, etc.)
+  link        String?  // Deep link đến trang chi tiết
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdBy   String?  @db.ObjectId
+  creator     User?    @relation("CreatorNotifications", fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("Notification")
 }
