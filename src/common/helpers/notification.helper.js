@@ -3,70 +3,63 @@ import { notificationService } from "../../services/notification.service.js";
 /**
  * Helper functions để gửi notifications từ các service khác
  */
-
-/**
- * Gửi notification khi tạo user mới
- */
 export const notifyUserCreated = async (newUser, creatorId) => {
     try {
         await notificationService.createNotification({
-            recipientId: newUser.id,
-            title: 'Welcome to Oil & Gas Management System',
-            message: `Your account has been created successfully. Your role: ${newUser.role?.name}`,
-            type: 'SUCCESS',
-            category: 'USER',
-            relatedId: newUser.id,
-            link: `/profile/overview`,
-            createdBy: creatorId,
+            body: {
+                recipientId: newUser.id,
+                title: 'Welcome to Oil & Gas Management System',
+                message: `Your account has been created successfully. Your role: ${newUser.role?.name}`,
+                type: 'SUCCESS',
+                category: 'USER',
+                relatedId: newUser.id,
+                link: `/profile/overview`,
+            },
+            user: creatorId ? { id: creatorId } : undefined,
         });
     } catch (error) {
         console.error('Error sending user created notification:', error);
     }
 };
 
-/**
- * Gửi notification khi update user
- */
 export const notifyUserUpdated = async (userId, updatedFields, updatedBy) => {
     try {
         const fieldsText = Object.keys(updatedFields).join(', ');
         await notificationService.createNotification({
-            recipientId: userId,
-            title: 'Account Updated',
-            message: `Your account information has been updated: ${fieldsText}`,
-            type: 'INFO',
-            category: 'USER',
-            relatedId: userId,
-            link: `/profile/overview`,
-            createdBy: updatedBy,
+            body: {
+                recipientId: userId,
+                title: 'Account Updated',
+                message: `Your account information has been updated: ${fieldsText}`,
+                type: 'INFO',
+                category: 'USER',
+                relatedId: userId,
+                link: `/profile/overview`,
+            },
+            user: updatedBy ? { id: updatedBy } : undefined,
         });
     } catch (error) {
         console.error('Error sending user updated notification:', error);
     }
 };
 
-/**
- * Gửi notification khi delete user
- */
 export const notifyUserDeleted = async (userId, deletedBy) => {
     try {
         await notificationService.createNotification({
-            recipientId: userId,
-            title: 'Account Deactivation',
-            message: 'Your account will be deactivated shortly. Please contact admin for more information.',
-            type: 'WARNING',
-            category: 'USER',
-            relatedId: userId,
-            createdBy: deletedBy,
+            body: {
+                recipientId: userId,
+                title: 'Account Deactivation',
+                message: 'Your account will be deactivated shortly. Please contact admin for more information.',
+                type: 'WARNING',
+                category: 'USER',
+                relatedId: userId,
+            },
+            user: deletedBy ? { id: deletedBy } : undefined,
         });
     } catch (error) {
         console.error('Error sending user deleted notification:', error);
     }
 };
 
-/**
- * Gửi notification khi role được update
- */
 export const notifyRoleUpdated = async (userIds, roleName, updatedBy) => {
     try {
         await notificationService.createBulkNotifications({
@@ -83,9 +76,6 @@ export const notifyRoleUpdated = async (userIds, roleName, updatedBy) => {
     }
 };
 
-/**
- * Gửi notification khi equipment cần bảo trì
- */
 export const notifyMaintenanceRequired = async (recipientIds, equipment) => {
     try {
         await notificationService.createBulkNotifications({
@@ -102,9 +92,6 @@ export const notifyMaintenanceRequired = async (recipientIds, equipment) => {
     }
 };
 
-/**
- * Gửi notification khi inventory thấp
- */
 export const notifyLowStock = async (recipientIds, inventory, warehouse) => {
     try {
         await notificationService.createBulkNotifications({
@@ -121,9 +108,6 @@ export const notifyLowStock = async (recipientIds, inventory, warehouse) => {
     }
 };
 
-/**
- * Gửi notification hệ thống
- */
 export const notifySystemMessage = async (recipientIds, title, message) => {
     try {
         await notificationService.createBulkNotifications({

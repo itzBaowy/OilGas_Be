@@ -120,7 +120,6 @@ export const userService = {
             },
             include: { role: true }
         });
-
         // Send welcome notification
         await notifyUserCreated(newUser, req.user?.id);
 
