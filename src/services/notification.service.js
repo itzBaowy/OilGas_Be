@@ -103,9 +103,6 @@ export const notificationService = {
         return { unreadCount: count };
     },
 
-    /**
-     * Gửi notification theo email (không cần permission VIEW_USER)
-     */
     async sendNotificationByEmail(req) {
         const { email, title, message, type, category, relatedId, link } = req.body;
         const createdBy = req.user?.id;
@@ -115,7 +112,7 @@ export const notificationService = {
             throw new BadRequestException("email, title, and message are required");
         }
 
-        // Tìm user theo email
+        // Find user by email
         const recipient = await prisma.user.findUnique({
             where: { email },
             select: { id: true, fullName: true, email: true },
@@ -131,7 +128,7 @@ export const notificationService = {
                 recipientId: recipient.id,
                 title,
                 message,
-                type: type || "INFO",
+                type: type,
                 category,
                 relatedId,
                 link,
