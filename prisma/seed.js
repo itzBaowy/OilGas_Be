@@ -203,6 +203,7 @@ async function main() {
 
   const warehouses = [
     {
+      warehouseId: 'WH-001',
       name: 'Kho trung tâm',
       location: 'Houston, TX',
       capacity: 10000,
@@ -211,6 +212,7 @@ async function main() {
       createdBy: adminUser.id,
     },
     {
+      warehouseId: 'WH-002',
       name: 'Kho phụ A',
       location: 'Dallas, TX',
       capacity: 5000,
@@ -219,6 +221,7 @@ async function main() {
       createdBy: adminUser.id,
     },
     {
+      warehouseId: 'WH-003',
       name: 'Kho bảo trì',
       location: 'Austin, TX',
       capacity: 3000,
@@ -309,6 +312,130 @@ async function main() {
 
   console.log('✅ Seed Equipment thành công!');
 
+  // Seed MaintenanceHistory
+  console.log('🌱 Đang khởi tạo dữ liệu MaintenanceHistory...');
+  
+  const allEquipments = await prisma.equipment.findMany();
+  const maintenanceTypes = ['Preventive', 'Corrective', 'Calibration'];
+  const maintenanceStatuses = ['Completed', 'Pending', 'Cancelled'];
+  const engineers = ['John Smith', 'Jane Doe', 'Mike Johnson', 'Sarah Williams', 'David Brown'];
+
+  const maintenanceHistories = [];
+  for (let i = 0; i < allEquipments.length; i++) {
+    const equipment = allEquipments[i];
+    // Tạo 2-3 lịch sử bảo trì cho mỗi thiết bị
+    const maintenanceCount = 2 + (i % 2);
+    
+    for (let j = 0; j < maintenanceCount; j++) {
+      maintenanceHistories.push({
+        equipmentId: equipment.id,
+        date: new Date(2024, (i + j) % 12, ((i + j) % 28) + 1),
+        type: maintenanceTypes[(i + j) % maintenanceTypes.length],
+        description: `${maintenanceTypes[(i + j) % maintenanceTypes.length]} maintenance for ${equipment.name}`,
+        performedBy: engineers[(i + j) % engineers.length],
+        status: maintenanceStatuses[(i + j) % maintenanceStatuses.length],
+        cost: maintenanceStatuses[(i + j) % maintenanceStatuses.length] === 'Completed' ? 500 + (i * 100) + (j * 50) : null,
+      });
+    }
+  }
+
+  for (const maintenance of maintenanceHistories) {
+    await prisma.maintenanceHistory.create({
+      data: maintenance,
+    });
+  }
+  console.log(`✅ Tạo ${maintenanceHistories.length} maintenance history records`);
+
+  // Seed Inventory
+  console.log('🌱 Đang khởi tạo dữ liệu Inventory...');
+  
+  const allWarehouses = await prisma.warehouse.findMany();
+  const inventories = [];
+  let inventoryCounter = 1;
+
+  for (const warehouse of allWarehouses) {
+    // Mỗi warehouse có 5-8 equipment khác nhau
+    const equipmentCount = 5 + (inventoryCounter % 4);
+    const warehouseEquipments = allEquipments.slice(0, equipmentCount);
+
+    for (const equipment of warehouseEquipments) {
+      const quantity = 10 + (inventoryCounter * 5);
+      let stockStatus = 'IN_STOCK';
+      if (quantity < 20) stockStatus = 'LOW';
+      if (quantity === 0) stockStatus = 'OUT_OF_STOCK';
+
+      inventories.push({
+        inventoryId: `INV-${String(inventoryCounter).padStart(3, '0')}`,
+        warehouseId: warehouse.id,
+        equipmentId: equipment.id,
+        quantity,
+        stockStatus,
+      });
+      inventoryCounter++;
+    }
+  }
+
+  for (const inventory of inventories) {
+    await prisma.inventory.create({
+      data: inventory,
+    });
+    console.log(`✅ Tạo inventory: ${inventory.inventoryId}`);
+  }
+
+  console.log('✅ Seed Inventory thành công!');
+
+  // Seed InventoryLedger
+  console.log('🌱 Đang khởi tạo dữ liệu InventoryLedger...');
+  
+  const allInventories = await prisma.inventory.findMany();
+  const suppliers = ['ABC Equipment Co.', 'XYZ Supply Inc.', 'Global Parts Ltd.', 'Industrial Solutions'];
+  const destinations = ['Platform A', 'Platform B', 'Maintenance Site', 'Offshore Rig'];
+  const receiverNames = ['John Receiver', 'Jane Handler', 'Mike Dispatcher', 'Sarah Manager'];
+
+  const ledgers = [];
+  for (let i = 0; i < allInventories.length; i++) {
+    const inventory = allInventories[i];
+    
+    // Mỗi inventory có 2-4 giao dịch (RECEIVE và DISPATCH)
+    const transactionCount = 2 + (i % 3);
+    
+    for (let j = 0; j < transactionCount; j++) {
+      const isReceive = j % 2 === 0;
+      const quantity = 5 + (j * 2);
+      
+      if (isReceive) {
+        ledgers.push({
+          inventoryId: inventory.id,
+          movementType: 'RECEIVE',
+          quantity,
+          supplierName: suppliers[j % suppliers.length],
+          receiverId: adminUser.id,
+          notes: `Received equipment batch #${i}-${j}`,
+          dateReceived: new Date(2024, (i + j) % 12, ((i + j) % 28) + 1),
+        });
+      } else {
+        ledgers.push({
+          inventoryId: inventory.id,
+          movementType: 'DISPATCH',
+          quantity,
+          destination: destinations[j % destinations.length],
+          receiverId: adminUser.id,
+          notes: `Dispatched to ${destinations[j % destinations.length]}`,
+          dateDispatched: new Date(2024, (i + j + 1) % 12, ((i + j + 1) % 28) + 1),
+        });
+      }
+    }
+  }
+
+  for (const ledger of ledgers) {
+    await prisma.inventoryLedger.create({
+      data: ledger,
+    });
+  }
+  console.log(`✅ Tạo ${ledgers.length} inventory ledger records`);
+
+  console.log('✅ Seed InventoryLedger thành công!');
+
   console.log('🎉 ========================================');
   console.log('🎉 Seed tất cả dữ liệu thành công!');
   console.log('🎉 ========================================');
@@ -317,6 +444,9 @@ async function main() {
   console.log(`   - Users: ${users.length}`);
   console.log(`   - Warehouses: ${warehouses.length}`);
   console.log(`   - Equipment: ${equipments.length}`);
+  console.log(`   - Maintenance History: ${maintenanceHistories.length}`);
+  console.log(`   - Inventories: ${inventories.length}`);
+  console.log(`   - Inventory Ledgers: ${ledgers.length}`);
   console.log('🎉 ========================================');
 }
 
