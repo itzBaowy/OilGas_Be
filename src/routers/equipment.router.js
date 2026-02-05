@@ -190,7 +190,8 @@ equipmentRouter.get("/", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), eq
 );
 
 /**
- * @swagger * /api/equipments/statuses:
+ * @swagger
+ * /api/equipments/statuses:
  *   get:
  *     summary: Lấy danh sách Statuses (Dropdown)
  *     description: Get list of available equipment statuses for dropdown selection
@@ -220,7 +221,8 @@ equipmentRouter.get("/", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), eq
 equipmentRouter.get("/statuses", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getStatuses);
 
 /**
- * @swagger * /api/equipments/{id}:
+ * @swagger
+ * /api/equipments/{id}:
  *   get:
  *     summary: Lấy chi tiết thiết bị (Get equipment by ID)
  *     tags: [Equipment]
@@ -426,35 +428,4 @@ equipmentRouter.delete("/:id", protect, checkPermission(["DELETE_EQUIPMENT", "AL
  *                   example: EQUIPMENT_NOT_FOUND
  */
 equipmentRouter.get("/:equipmentId/maintenance-history", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getMaintenanceHistory);
-
-/**
- * @swagger
- * /api/equipments/statuses:
- *   get:
- *     summary: Lấy danh sách Statuses (Dropdown)
- *     description: Get list of available equipment statuses for dropdown selection
- *     tags: [Equipment]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Success
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: string
- *                   example: ["Active", "Inactive", "Maintenance"]
- *                 message:
- *                   type: string
- *                   example: Equipment statuses retrieved successfully
- */
-equipmentRouter.get("/statuses", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getStatuses);
 export default equipmentRouter;
