@@ -25,7 +25,7 @@ export const notificationService = {
                 recipientId,
                 title,
                 message,
-                type: type || "INFO",
+                type: type,
                 category,
                 relatedId,
                 link,
@@ -103,6 +103,68 @@ export const notificationService = {
         return { unreadCount: count };
     },
 
+    /**
+     * Gửi notification theo email (không cần permission VIEW_USER)
+     */
+    async sendNotificationByEmail(req) {
+        const { email, title, message, type, category, relatedId, link } = req.body;
+        const createdBy = req.user?.id;
+
+        // Validate required fields
+        if (!email || !title || !message) {
+            throw new BadRequestException("email, title, and message are required");
+        }
+
+        // Tìm user theo email
+        const recipient = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, fullName: true, email: true },
+        });
+
+        if (!recipient) {
+            throw new BadRequestException(`User not found with email: ${email}`);
+        }
+
+        // Create notification
+        const notification = await prisma.notification.create({
+            data: {
+                recipientId: recipient.id,
+                title,
+                message,
+                type: type || "INFO",
+                category,
+                relatedId,
+                link,
+                createdBy,
+            },
+            include: {
+                creator: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        avatarCloudId: true,
+                    },
+                },
+            },
+        });
+
+        // Emit socket event
+        const io = getIO();
+        if (io) {
+            io.to(recipient.id).emit("new_notification", notification);
+        }
+
+        return {
+            notification,
+            recipient: {
+                id: recipient.id,
+                fullName: recipient.fullName,
+                email: recipient.email,
+            },
+        };
+    },
+
     async markAsRead(req) {
         const { notificationId } = req.params;
         const userId = req.user.id;
@@ -178,7 +240,7 @@ export const notificationService = {
             recipientId,
             title,
             message,
-            type: type || 'INFO',
+            type: type,
             category,
             relatedId,
             link,
