@@ -331,4 +331,47 @@ export const equipmentService = {
   getStatuses() {
     return ["Active", "Inactive", "Maintenance"];
   },
+
+  async getTypes() {
+    // Get distinct types using Prisma's distinct feature
+    const equipments = await prisma.equipment.findMany({
+      where: {
+        isDeleted: false
+      },
+      distinct: ['type'],
+      select: {
+        type: true
+      }
+    });
+
+    // Convert to uppercase, filter null/empty strings, remove duplicates, and sort
+    const uniqueTypes = [...new Set(
+      equipments
+        .map(eq => eq.type)
+        .filter(type => type && type.trim() !== '')
+        .map(type => type.toUpperCase())
+    )].sort();
+
+    return uniqueTypes;
+  },
+
+  async getMaintenanceTypes() {
+    // Get distinct maintenance types using Prisma's distinct feature
+    const maintenanceHistory = await prisma.maintenanceHistory.findMany({
+      distinct: ['type'],
+      select: {
+        type: true
+      }
+    });
+
+    // Convert to uppercase, filter null/empty strings, remove duplicates, and sort
+    const uniqueTypes = [...new Set(
+      maintenanceHistory
+        .map(mh => mh.type)
+        .filter(type => type && type.trim() !== '')
+        .map(type => type.toUpperCase())
+    )].sort();
+
+    return uniqueTypes;
+  }
 };
