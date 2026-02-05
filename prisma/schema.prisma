@@ -131,6 +131,8 @@ model Equipment {
   inventories     Inventory[]
   maintenanceHistory    MaintenanceHistory[]
 
+  @@map("Equipment")
+}
 model MaintenanceHistory {
   id            String     @id @default(auto()) @map("_id") @db.ObjectId
   equipmentId   String     @db.ObjectId
