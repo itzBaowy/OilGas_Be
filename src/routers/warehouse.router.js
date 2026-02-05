@@ -77,16 +77,14 @@ const warehouseRouter = express.Router();
  *           default: 10
  *         description: Số lượng items mỗi trang
  *       - in: query
- *         name: keyword
+ *         name: filters
  *         schema:
  *           type: string
- *         description: Tìm kiếm theo tên hoặc địa chỉ
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [ACTIVE, MAINTENANCE]
- *         description: Lọc theo trạng thái
+ *         description: |
+ *           Bộ lọc dạng JSON string. 
+ *           Ví dụ: {"status":"MAINTENANCE"} để lọc theo trạng thái.
+ *           Các field có thể lọc: status (exact match)
+ *         example: '{"status":"MAINTENANCE"}'
  *     responses:
  *       200:
  *         description: Lấy danh sách thành công
