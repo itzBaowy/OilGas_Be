@@ -93,6 +93,58 @@ notificationRouter.post("/", protect, notificationController.createNotification)
 
 /**
  * @swagger
+ * /api/notifications/send-by-email:
+ *   post:
+ *     summary: Gửi thông báo theo email (không cần permission VIEW_USER)
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - title
+ *               - message
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: Email của người nhận
+ *                 example: user@example.com
+ *               title:
+ *                 type: string
+ *                 description: Tiêu đề thông báo
+ *               message:
+ *                 type: string
+ *                 description: Nội dung thông báo
+ *               type:
+ *                 type: string
+ *                 enum: [INFO, SUCCESS, WARNING, ERROR, SYSTEM]
+ *                 default: INFO
+ *               category:
+ *                 type: string
+ *                 enum: [USER, ROLE, EQUIPMENT, WAREHOUSE, INVENTORY, MAINTENANCE, SYSTEM]
+ *               relatedId:
+ *                 type: string
+ *                 description: ID của entity liên quan
+ *               link:
+ *                 type: string
+ *                 description: Deep link đến trang chi tiết
+ *     responses:
+ *       201:
+ *         description: Gửi thành công
+ *       400:
+ *         description: Email không tồn tại hoặc dữ liệu không hợp lệ
+ *       401:
+ *         description: Chưa đăng nhập
+ */
+notificationRouter.post("/send-by-email", protect, notificationController.sendNotificationByEmail);
+
+/**
+ * @swagger
  * /api/notifications/unread-count:
  *   get:
  *     summary: Đếm số thông báo chưa đọc

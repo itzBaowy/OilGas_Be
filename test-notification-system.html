@@ -624,6 +624,46 @@
         </div>
       </div>
 
+      <!-- Send to User Section -->
+      <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px;">
+        <div class="card">
+          <h2>📧 Send Notification to User</h2>
+          <p style="color: #666; margin-bottom: 15px;">Enter user email to send notification:</p>
+          
+          <div class="form-group">
+            <label>Recipient Email:</label>
+            <input type="email" id="recipientEmail" placeholder="user@example.com" />
+          </div>
+
+          <div class="form-group">
+            <label>Title:</label>
+            <input type="text" id="notifTitle" placeholder="Notification title" value="New Notification" />
+          </div>
+
+          <div class="form-group">
+            <label>Message:</label>
+            <textarea id="notifMessage" placeholder="Enter your message here..." style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; min-height: 80px; font-family: inherit;" rows="3">This is a custom notification message.</textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Type:</label>
+            <select id="notifType">
+              <option value="INFO">ℹ️ Info</option>
+              <option value="SUCCESS">✅ Success</option>
+              <option value="WARNING">⚠️ Warning</option>
+              <option value="ERROR">❌ Error</option>
+              <option value="SYSTEM">🔧 System</option>
+            </select>
+          </div>
+
+          <button class="btn-primary" onclick="sendNotificationToUser()" style="width: 100%;">
+            🚀 Send Notification
+          </button>
+
+          <div id="sendResult" style="margin-top: 15px; padding: 10px; border-radius: 8px; display: none;"></div>
+        </div>
+      </div>
+
       <!-- Console Log -->
       <div class="log-container">
         <h2>📋 Console Log</h2>
@@ -1106,6 +1146,85 @@
         }
 
         addLog('Bulk notifications sent!', 'success');
+      }
+
+      async function sendNotificationToUser() {
+        if (!accessToken) {
+          alert('Please login first!');
+          return;
+        }
+
+        const email = document.getElementById('recipientEmail').value.trim();
+        const title = document.getElementById('notifTitle').value.trim();
+        const message = document.getElementById('notifMessage').value.trim();
+        const type = document.getElementById('notifType').value;
+        const resultDiv = document.getElementById('sendResult');
+
+        if (!email) {
+          resultDiv.style.display = 'block';
+          resultDiv.style.background = '#fee';
+          resultDiv.style.border = '2px solid #e74c3c';
+          resultDiv.style.color = '#c0392b';
+          resultDiv.innerHTML = '❌ Please enter recipient email!';
+          return;
+        }
+
+        if (!title || !message) {
+          resultDiv.style.display = 'block';
+          resultDiv.style.background = '#fee';
+          resultDiv.style.border = '2px solid #e74c3c';
+          resultDiv.style.color = '#c0392b';
+          resultDiv.innerHTML = '❌ Please enter both title and message!';
+          return;
+        }
+
+        try {
+          addLog(`Sending notification to ${email}...`, 'info');
+          
+          // Gửi notification theo email (API mới không cần permission VIEW_USER)
+          const notifResponse = await fetch(`${API_URL}/notifications/send-by-email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: email,
+              title: title,
+              message: message,
+              type: type,
+              category: 'USER'
+            }),
+          });
+
+          const notifData = await notifResponse.json();
+
+          if (notifResponse.ok) {
+            const recipientUser = notifData.data.recipient;
+            addLog(`✅ Notification sent successfully to ${recipientUser.fullName}!`, 'success');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#d4edda';
+            resultDiv.style.border = '2px solid #c3e6cb';
+            resultDiv.style.color = '#155724';
+            resultDiv.innerHTML = `✅ <strong>Success!</strong><br>Notification sent to ${recipientUser.fullName} (${email})`;
+            
+            showToast('Success!', `Notification sent to ${recipientUser.fullName}`, 'SUCCESS');
+          } else {
+            throw new Error(notifData.message || 'Failed to send notification');
+          }
+
+        } catch (error) {
+          addLog(`❌ Error: ${error.message}`, 'error');
+          
+          resultDiv.style.display = 'block';
+          resultDiv.style.background = '#fee';
+          resultDiv.style.border = '2px solid #e74c3c';
+          resultDiv.style.color = '#c0392b';
+          resultDiv.innerHTML = `❌ <strong>Error:</strong><br>${error.message}`;
+          
+          showToast('Error', error.message, 'ERROR');
+        }
       }
 
       // ============ INITIALIZATION ============
