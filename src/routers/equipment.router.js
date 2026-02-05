@@ -230,6 +230,68 @@ equipmentRouter.get("/statuses", protect, checkPermission(["VIEW_EQUIPMENT", "AL
 
 /**
  * @swagger
+ * /api/equipments/types:
+ *   get:
+ *     summary: Lấy danh sách Types duy nhất (Get unique equipment types)
+ *     description: Get list of unique equipment types from database for filtering and suggestions. Returns distinct, non-empty types sorted alphabetically.
+ *     tags: [Equipment]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["COMPRESSOR", "DRILLING RIG", "PIPELINE", "PUMP", "SCADA UNIT", "SENSOR", "VALVE"]
+ *                 message:
+ *                   type: string
+ *                   example: Equipment types retrieved successfully
+ */
+equipmentRouter.get("/types", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getTypes);
+
+/**
+ * @swagger
+ * /api/equipments/maintenance-history/types:
+ *   get:
+ *     summary: Lấy danh sách Maintenance Types duy nhất (Get unique maintenance types)
+ *     description: Get list of unique maintenance types from database for filtering and suggestions. Returns distinct, non-empty types sorted alphabetically.
+ *     tags: [Equipment]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["CALIBRATION", "CORRECTIVE", "INSPECTION", "PREVENTIVE", "REPAIR", "REPLACEMENT"]
+ *                 message:
+ *                   type: string
+ *                   example: Maintenance types retrieved successfully
+ */
+equipmentRouter.get("/maintenance-history/types", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getMaintenanceTypes);
+
+/**
+ * @swagger
  * /api/equipments/maintenance-history:
  *   get:
  *     summary: Lấy tất cả lịch sử bảo trì (Get all maintenance history)

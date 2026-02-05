@@ -41,5 +41,15 @@ export const equipmentController = {
         const result = equipmentService.getStatuses();
         const response = responseSuccess(result, "Equipment statuses retrieved successfully");
         res.status(response.statusCode).json(response);
+    },
+    async getTypes(req, res, next) {
+        const result = await equipmentService.getTypes();
+        const response = responseSuccess(result, "Equipment types retrieved successfully");
+        res.status(response.statusCode).json(response);
+    },
+    async getMaintenanceTypes(req, res, next) {
+        const result = await equipmentService.getMaintenanceTypes();
+        const response = responseSuccess(result, "Maintenance types retrieved successfully");
+        res.status(response.statusCode).json(response);
     }
 };
