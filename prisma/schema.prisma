@@ -87,6 +87,7 @@ model BlackListToken {
 
 model Warehouse {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  warehouseId String?  @unique // Custom format: WH-001, WH-002, etc.
   name        String
   location    String
   capacity    Int
@@ -95,6 +96,7 @@ model Warehouse {
   createdBy   String?  @db.ObjectId
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  inventories Inventory[]
 
   @@unique([name, location])
   @@map("Warehouse")
@@ -124,7 +126,45 @@ model Equipment {
   specifications  Json?    // Flexible technical specs
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  inventories     Inventory[]
 
   @@map("Equipment")
 
+}
+
+// Inventory Model - Tracks equipment quantity in warehouses
+model Inventory {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  inventoryId       String?  @unique // Custom format: INV-001, INV-002, etc.
+  warehouseId       String   @db.ObjectId
+  warehouse         Warehouse @relation(fields: [warehouseId], references: [id])
+  equipmentId       String   @db.ObjectId
+  equipment         Equipment @relation(fields: [equipmentId], references: [id])
+  quantity          Int      @default(0)
+  stockStatus       String   // IN_STOCK, LOW, OUT_OF_STOCK
+  lastUpdated       DateTime @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  inventoryLedgers  InventoryLedger[]
+
+  @@unique([warehouseId, equipmentId])
+  @@map("Inventory")
+}
+
+// Inventory Ledger Model - Tracks all inventory movements (receive/dispatch)
+model InventoryLedger {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  inventoryId     String    @db.ObjectId
+  inventory       Inventory @relation(fields: [inventoryId], references: [id])
+  movementType    String    // RECEIVE, DISPATCH
+  quantity        Int
+  supplierName    String?   // For RECEIVE
+  destination     String?   // For DISPATCH
+  receiverId      String?   // User who received/dispatched
+  notes           String?
+  dateReceived    DateTime? // For RECEIVE
+  dateDispatched  DateTime? // For DISPATCH
+  createdAt       DateTime  @default(now())
+
+  @@map("InventoryLedger")
 }

@@ -114,6 +114,8 @@ async function main() {
   const engineerRole = await prisma.role.findUnique({ where: { name: 'Engineer' } });
 
   // Tạo users
+  const teamMembers = ['giabao', 'anhthu', 'khuongduy', 'huyhoang', 'longnhat', 'thuyvi', 'duongan', 'thienphan', 'chivy'];
+
   const users = [
     {
       email: 'admin@gmail.com',
@@ -144,6 +146,46 @@ async function main() {
     },
   ];
 
+  // Thêm users từ danh sách team members
+  let phoneCounter = 1000000;
+  teamMembers.forEach((member) => {
+    // Tạo tên đầy đủ từ username
+    const fullName = member.charAt(0).toUpperCase() + member.slice(1).replace(/([a-z])([A-Z])/g, '$1 $2');
+
+    // Admin user
+    users.push({
+      email: `${member}1@gmail.com`,
+      password: hashedPassword,
+      fullName: `${fullName} (Admin)`,
+      phoneNumber: `090${phoneCounter++}`,
+      roleId: adminRole.id,
+      status: 'ACTIVE',
+      isActive: true,
+    });
+
+    // Supervisor user
+    users.push({
+      email: `${member}2@gmail.com`,
+      password: hashedPassword,
+      fullName: `${fullName} (Supervisor)`,
+      phoneNumber: `090${phoneCounter++}`,
+      roleId: supervisorRole.id,
+      status: 'ACTIVE',
+      isActive: true,
+    });
+
+    // Engineer user
+    users.push({
+      email: `${member}3@gmail.com`,
+      password: hashedPassword,
+      fullName: `${fullName} (Engineer)`,
+      phoneNumber: `090${phoneCounter++}`,
+      roleId: engineerRole.id,
+      status: 'ACTIVE',
+      isActive: true,
+    });
+  });
+
   for (const user of users) {
     await prisma.user.upsert({
       where: { email: user.email },
@@ -161,6 +203,7 @@ async function main() {
 
   const warehouses = [
     {
+      warehouseId: 'WH-001',
       name: 'Kho trung tâm',
       location: 'Houston, TX',
       capacity: 10000,
@@ -169,6 +212,7 @@ async function main() {
       createdBy: adminUser.id,
     },
     {
+      warehouseId: 'WH-002',
       name: 'Kho phụ A',
       location: 'Dallas, TX',
       capacity: 5000,
@@ -177,6 +221,7 @@ async function main() {
       createdBy: adminUser.id,
     },
     {
+      warehouseId: 'WH-003',
       name: 'Kho bảo trì',
       location: 'Austin, TX',
       capacity: 3000,
@@ -188,11 +233,11 @@ async function main() {
 
   for (const warehouse of warehouses) {
     await prisma.warehouse.upsert({
-      where: { 
-        name_location: { 
-          name: warehouse.name, 
-          location: warehouse.location 
-        } 
+      where: {
+        name_location: {
+          name: warehouse.name,
+          location: warehouse.location
+        }
       },
       update: {},
       create: warehouse,
@@ -216,18 +261,18 @@ async function main() {
 
   // Seed Equipment
   console.log('🌱 Đang khởi tạo dữ liệu Equipment...');
-  
+
   const equipmentTypes = ['Pump', 'Valve', 'Compressor', 'Sensor', 'Drilling Rig', 'Pipeline', 'Scada Unit'];
   const locations = ['Platform A', 'Platform B', 'Onshore Facility', 'Storage Tank', 'Control Room'];
   const manufacturers = ['Baker Hughes', 'Schlumberger', 'Halliburton', 'Weatherford', 'Cameron'];
-  
+
   const equipments = [];
   for (let i = 1; i <= 15; i++) {
     const equipmentId = `EQ-${String(i).padStart(3, '0')}`;
     const type = equipmentTypes[(i - 1) % equipmentTypes.length];
     const location = locations[(i - 1) % locations.length];
     const manufacturer = manufacturers[(i - 1) % manufacturers.length];
-    
+
     equipments.push({
       equipmentId,
       name: `${type} ${equipmentId}`,
