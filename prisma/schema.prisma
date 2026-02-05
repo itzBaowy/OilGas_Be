@@ -110,6 +110,7 @@ model Sequence {
 }
 
 model Equipment {
+<<<<<<< Updated upstream
   id                    String              @id @default(auto()) @map("_id") @db.ObjectId
   equipmentId           String              @unique // Custom format: EQ-001, EQ-002, etc.
   name                  String              @unique
@@ -119,6 +120,21 @@ model Equipment {
   location              String
   manufacturer          String?
   installDate           DateTime
+=======
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  equipmentId     String   @unique // Custom format: EQ-001, EQ-002, etc.
+  name            String   @unique
+  serialNumber    String   @unique
+  type            String
+  model           String   // Equipment model (e.g., HP-100, Series-X, etc.)
+  status          String   @default("Active") // Active, Inactive, Maintenance
+  location        String
+  manufacturer    String?
+  installDate     DateTime
+  description     String?
+  isDeleted       Boolean  @default(false)
+  specifications  Json?    // Flexible technical specs
+>>>>>>> Stashed changes
   lastMaintenanceDate   DateTime?
   nextMaintenanceDate   DateTime?
   description           String?

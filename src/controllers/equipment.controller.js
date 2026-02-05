@@ -27,6 +27,11 @@ export const equipmentController = {
         const response = responseSuccess(result, "Equipment deleted successfully");
         res.status(response.statusCode).json(response);
     },
+    async getAllMaintenanceHistory(req, res, next) {
+        const result = await equipmentService.getAllMaintenanceHistory(req);
+        const response = responseSuccess(result, "All maintenance history retrieved successfully");
+        res.status(response.statusCode).json(response);
+    },
     async getMaintenanceHistory(req, res, next) {
         const result = await equipmentService.getMaintenanceHistory(req.params.equipmentId, req.query);
         const response = responseSuccess(result, "Maintenance history retrieved successfully");

@@ -36,9 +36,12 @@ const equipmentRouter = express.Router();
  *           example: SN-2024-001
  *         type:
  *           type: string
- *           enum: [Pump, Valve, Compressor, Sensor, Drilling Rig, Pipeline, Scada Unit]
- *           description: Equipment type
+ *           description: Equipment type (user can input custom type)
  *           example: Pump
+ *         model:
+ *           type: string
+ *           description: Equipment model
+ *           example: HP-100
  *         status:
  *           type: string
  *           enum: [Active, Inactive, Maintenance]
@@ -97,6 +100,7 @@ const equipmentRouter = express.Router();
  *               - name
  *               - serialNumber
  *               - type
+ *               - model
  *               - location
  *               - installDate
  *             properties:
@@ -108,8 +112,12 @@ const equipmentRouter = express.Router();
  *                 example: SN-2024-001
  *               type:
  *                 type: string
- *                 enum: [Pump, Valve, Compressor, Sensor, Drilling Rig, Pipeline, Scada Unit]
+ *                 description: Custom equipment type
  *                 example: Pump
+ *               model:
+ *                 type: string
+ *                 description: Equipment model
+ *                 example: HP-100
  *               status:
  *                 type: string
  *                 enum: [Active, Inactive, Maintenance]
@@ -222,6 +230,122 @@ equipmentRouter.get("/statuses", protect, checkPermission(["VIEW_EQUIPMENT", "AL
 
 /**
  * @swagger
+ * /api/equipments/maintenance-history:
+ *   get:
+ *     summary: Lấy tất cả lịch sử bảo trì (Get all maintenance history)
+ *     description: Get maintenance history of all equipment with pagination and filters
+ *     tags: [Equipment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date (YYYY-MM-DD)
+ *         example: 2024-01-01
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date (YYYY-MM-DD)
+ *         example: 2024-12-31
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         description: Filter by maintenance type
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filter by maintenance status
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     pageSize:
+ *                       type: integer
+ *                       example: 10
+ *                     totalItem:
+ *                       type: integer
+ *                       example: 50
+ *                     totalPage:
+ *                       type: integer
+ *                       example: 5
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           equipmentId:
+ *                             type: string
+ *                           date:
+ *                             type: string
+ *                             format: date-time
+ *                           type:
+ *                             type: string
+ *                             example: Inspection
+ *                           description:
+ *                             type: string
+ *                           performedBy:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                             example: Completed
+ *                           cost:
+ *                             type: number
+ *                           equipment:
+ *                             type: object
+ *                             properties:
+ *                               equipmentId:
+ *                                 type: string
+ *                                 example: EQ-001
+ *                               name:
+ *                                 type: string
+ *                               type:
+ *                                 type: string
+ *                               model:
+ *                                 type: string
+ *                               serialNumber:
+ *                                 type: string
+ *                 message:
+ *                   type: string
+ *                   example: All maintenance history retrieved successfully
+ */
+equipmentRouter.get("/maintenance-history", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]), equipmentController.getAllMaintenanceHistory);
+
+/**
+ * @swagger
  * /api/equipments/{id}:
  *   get:
  *     summary: Lấy chi tiết thiết bị (Get equipment by ID)
@@ -270,6 +394,10 @@ equipmentRouter.get("/:id", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]),
  *                 type: string
  *               type:
  *                 type: string
+ *                 description: Custom equipment type
+ *               model:
+ *                 type: string
+ *                 description: Equipment model
  *               status:
  *                 type: string
  *               location:

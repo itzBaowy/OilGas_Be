@@ -275,6 +275,7 @@ async function main() {
       name: `${type} ${equipmentId}`,
       serialNumber: `SN-${Date.now()}-${i}`,
       type,
+      model: `Model-${type}-${i}`,
       status: i % 5 === 0 ? 'Maintenance' : (i % 7 === 0 ? 'Inactive' : 'Active'),
       location,
       manufacturer,
@@ -282,7 +283,6 @@ async function main() {
       description: `${type} được lắp đặt tại ${location}`,
       isDeleted: false,
       specifications: {
-        model: `Model-${type}-${i}`,
         capacity: `${(i * 100)}L`,
         pressure: `${(i * 10)}PSI`,
         temperature: `${(i * 5)}°C`,
