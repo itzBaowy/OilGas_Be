@@ -17,6 +17,7 @@ export const initSocket = (httpServer) => {
         
         // Client gửi userId và deviceId khi kết nối
         socket.on('register_user', ({ userId, deviceId }) => {
+            console.log(`Received register_user event with userId: ${userId}, deviceId: ${deviceId}`);
             if (userId) {
                 // Kiểm tra nếu user đã có socket từ device khác
                 const existingData = userDeviceMap.get(userId);
