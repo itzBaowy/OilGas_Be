@@ -1,6 +1,6 @@
 # 🛢️ Oil & Gas Management System - Backend API
 
-Backend API cho hệ thống quản lý Oil & Gas sử dụng Node.js, Express, Prisma và MongoDB
+Backend API cho hệ thống quản lý Oil & Gas sử dụng Node.js, Express, Prisma và MongoDB/
 
 ---
 
