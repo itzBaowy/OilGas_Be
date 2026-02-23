@@ -43,7 +43,7 @@ export const equipmentController = {
         res.status(response.statusCode).json(response);
     },
     async getTypes(req, res, next) {
-        const result = await equipmentService.getTypes();
+        const result = equipmentService.getTypes();
         const response = responseSuccess(result, "Equipment types retrieved successfully");
         res.status(response.statusCode).json(response);
     },

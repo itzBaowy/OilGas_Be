@@ -26,7 +26,7 @@ export const equipmentService = {
 
   async createEquipment(req) {
     // Validate equipment data using helper
-    const { parsedInstallDate } = validateEquipmentData(req.body);
+    const { parsedInstallDate, normalizedType } = validateEquipmentData(req.body);
 
     const {
       name,
@@ -40,6 +40,7 @@ export const equipmentService = {
       specifications,
       lastMaintenanceDate,
       nextMaintenanceDate,
+      expiredDate,
     } = req.body;
 
     // Check if name already exists
@@ -71,12 +72,13 @@ export const equipmentService = {
         equipmentId,
         name,
         serialNumber,
-        type,
+        type: normalizedType, // Use normalized type (Pump, Valve, Compressor, Sensor, or Other)
         model,
         status: status,
         location,
         manufacturer,
         installDate: parsedInstallDate,
+        expiredDate: expiredDate ? new Date(expiredDate) : parsedInstallDate, // Default to installDate if not provided
         lastMaintenanceDate: lastMaintenanceDate
           ? new Date(lastMaintenanceDate)
           : null,
@@ -151,6 +153,7 @@ export const equipmentService = {
       nextMaintenanceDate,
       manufacturer,
       installDate,
+      expiredDate,
     } = req.body;
 
     // Check if equipment exists
@@ -163,7 +166,7 @@ export const equipmentService = {
     }
 
     // Validate update data (type and status if provided)
-    validateEquipmentUpdateData(req.body);
+    const { normalizedType } = validateEquipmentUpdateData(req.body);
 
     // Check name uniqueness if changed
     if (name && name !== existingEquipment.name) {
@@ -186,7 +189,7 @@ export const equipmentService = {
 
     const updateData = {};
     if (name) updateData.name = name;
-    if (type) updateData.type = type;
+    if (type) updateData.type = normalizedType; // Use normalized type
     if (model) updateData.model = model;
     if (status) updateData.status = status;
     if (location) updateData.location = location;
@@ -204,6 +207,8 @@ export const equipmentService = {
         : null;
     if (installDate !== undefined)
       updateData.installDate = new Date(installDate);
+    if (expiredDate !== undefined)
+      updateData.expiredDate = new Date(expiredDate);
     // Update equipment
     const updatedEquipment = await prisma.equipment.update({
       where: { equipmentId },
@@ -332,27 +337,9 @@ export const equipmentService = {
     return ["Active", "Inactive", "Maintenance"];
   },
 
-  async getTypes() {
-    // Get distinct types using Prisma's distinct feature
-    const equipments = await prisma.equipment.findMany({
-      where: {
-        isDeleted: false
-      },
-      distinct: ['type'],
-      select: {
-        type: true
-      }
-    });
-
-    // Convert to uppercase, filter null/empty strings, remove duplicates, and sort
-    const uniqueTypes = [...new Set(
-      equipments
-        .map(eq => eq.type)
-        .filter(type => type && type.trim() !== '')
-        .map(type => type.toUpperCase())
-    )].sort();
-
-    return uniqueTypes;
+  getTypes() {
+    // Return predefined equipment types for dropdown
+    return ["Pump", "Valve", "Compressor", "Sensor", "Other"];
   },
 
   async getMaintenanceTypes() {
