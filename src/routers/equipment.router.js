@@ -36,7 +36,8 @@ const equipmentRouter = express.Router();
  *           example: SN-2024-001
  *         type:
  *           type: string
- *           description: Equipment type (user can input custom type)
+ *           enum: [Pump, Valve, Compressor, Sensor, Other]
+ *           description: Equipment type (dropdown selection)
  *           example: Pump
  *         model:
  *           type: string
@@ -112,7 +113,8 @@ const equipmentRouter = express.Router();
  *                 example: SN-2024-001
  *               type:
  *                 type: string
- *                 description: Custom equipment type
+ *                 enum: [Pump, Valve, Compressor, Sensor, Other]
+ *                 description: Equipment type (dropdown selection, auto-converts to Other if not in list)
  *                 example: Pump
  *               model:
  *                 type: string
@@ -232,8 +234,8 @@ equipmentRouter.get("/statuses", protect, checkPermission(["VIEW_EQUIPMENT", "AL
  * @swagger
  * /api/equipments/types:
  *   get:
- *     summary: Lấy danh sách Types duy nhất (Get unique equipment types)
- *     description: Get list of unique equipment types from database for filtering and suggestions. Returns distinct, non-empty types sorted alphabetically.
+ *     summary: Lấy danh sách Types (Get equipment types for dropdown)
+ *     description: Get predefined list of equipment types for dropdown selection. Types include Pump, Valve, Compressor, Sensor, and Other.
  *     tags: [Equipment]
  *     security:
  *       - bearerAuth: []
@@ -252,7 +254,7 @@ equipmentRouter.get("/statuses", protect, checkPermission(["VIEW_EQUIPMENT", "AL
  *                   type: array
  *                   items:
  *                     type: string
- *                   example: ["COMPRESSOR", "DRILLING RIG", "PIPELINE", "PUMP", "SCADA UNIT", "SENSOR", "VALVE"]
+ *                   example: ["Pump", "Valve", "Compressor", "Sensor", "Other"]
  *                 message:
  *                   type: string
  *                   example: Equipment types retrieved successfully
@@ -456,7 +458,8 @@ equipmentRouter.get("/:id", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]),
  *                 type: string
  *               type:
  *                 type: string
- *                 description: Custom equipment type
+ *                 enum: [Pump, Valve, Compressor, Sensor, Other]
+ *                 description: Equipment type (dropdown selection, auto-converts to Other if not in list)
  *               model:
  *                 type: string
  *                 description: Equipment model

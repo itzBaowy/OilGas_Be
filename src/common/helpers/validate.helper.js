@@ -52,16 +52,8 @@ export function validateEmail(email) {
 
 //Equipment validation helpers
 
-// Valid equipment types - REMOVED: Allow users to enter custom types
-// const EQUIPMENT_TYPES = [
-//   "Pump",
-//   "Valve",
-//   "Compressor",
-//   "Sensor",
-//   "Drilling Rig",
-//   "Pipeline",
-//   "Scada Unit"
-// ];
+// Valid equipment types - Predefined dropdown values
+const EQUIPMENT_TYPES = ["Pump", "Valve", "Compressor", "Sensor"];
 
 // Valid equipment statuses
 const EQUIPMENT_STATUSES = ["Active", "Inactive", "Maintenance"];
@@ -100,7 +92,8 @@ export function validateEquipmentRequiredFields(data) {
 }
 
 /**
- * Validate equipment type - Allows custom types entered by users
+ * Validate and normalize equipment type
+ * Returns one of: Pump, Valve, Compressor, Sensor, or Other
  */
 export function validateEquipmentType(type) {
   if (!type) {
@@ -109,7 +102,15 @@ export function validateEquipmentType(type) {
   if (typeof type !== "string" || type.trim().length === 0) {
     throw new BadRequestException("Equipment type must be a non-empty string");
   }
-  return true;
+  
+  // Normalize type - check if it matches predefined types (case-insensitive)
+  const normalizedType = type.trim();
+  const matchedType = EQUIPMENT_TYPES.find(
+    (t) => t.toLowerCase() === normalizedType.toLowerCase()
+  );
+  
+  // Return matched type or "Other" if not found
+  return matchedType || "Other";
 }
 
 export function validateEquipmentModel(model) {
@@ -137,7 +138,6 @@ export function validateEquipmentStatus(status) {
   return true;
 }
 
-
 //Validate install date format
 export function validateInstallDate(installDate) {
   if (!installDate) {
@@ -159,13 +159,14 @@ export function validateInstallDate(installDate) {
  * Validate all equipment data for creation
  */
 export function validateEquipmentData(data) {
-  const { name, serialNumber, type, model, status, location, installDate } = data;
+  const { name, serialNumber, type, model, status, location, installDate } =
+    data;
 
   // Validate required fields
   validateEquipmentRequiredFields(data);
 
-  // Validate equipment type
-  validateEquipmentType(type);
+  // Validate and normalize equipment type
+  const normalizedType = validateEquipmentType(type);
 
   // Validate equipment model
   validateEquipmentModel(model);
@@ -181,6 +182,7 @@ export function validateEquipmentData(data) {
   return {
     isValid: true,
     parsedInstallDate: parsedDate,
+    normalizedType: normalizedType,
   };
 }
 
@@ -191,10 +193,11 @@ export function validateEquipmentUpdateData(data) {
   const { type, model, status, installDate } = data;
 
   let parsedDate = null;
+  let normalizedType = null;
 
-  // Validate type if provided
+  // Validate and normalize type if provided
   if (type) {
-    validateEquipmentType(type);
+    normalizedType = validateEquipmentType(type);
   }
 
   // Validate status if provided
@@ -220,5 +223,6 @@ export function validateEquipmentUpdateData(data) {
   return {
     isValid: true,
     parsedInstallDate: parsedDate,
+    normalizedType: normalizedType,
   };
 }
