@@ -17,6 +17,9 @@ export const userService = {
             where: where,
             skip: index, // skip tới vị trí index nào (OFFSET)
             take: pageSize, // take lấy bao nhiêu phần tử (LIMIT)
+            include: {
+                role: true  // Include role data
+            }
         });
 
         const totalItemPromise = prisma.user.count({
