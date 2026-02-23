@@ -213,6 +213,38 @@ export const userService = {
         });
 
         return true;
+    },
+
+    async checkUserExists(req) {
+        const { email } = req.body;
+        
+        // Validate email
+        if (!email) {
+            throw new BadRequestException("Email is required");
+        }
+        validateEmail(email);
+        
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { email: email },
+            select: {
+                email: true,
+                fullName: true
+            }
+        });
+        
+        if (userExist) {
+            return {
+                exists: true,
+                email: userExist.email,
+                fullName: userExist.fullName
+            };
+        }
+        
+        return {
+            exists: false,
+            email: email
+        };
     }
 
 };

@@ -27,4 +27,9 @@ export const userController = {
       const response = responseSuccess(result, `Delete user successfully`);
       res.status(response.statusCode).json(response);
    },
+   async checkUserExists(req, res, next) {
+      const result = await userService.checkUserExists(req);
+      const response = responseSuccess(result, `Check user exists successfully`);
+      res.status(response.statusCode).json(response);
+   },
 };

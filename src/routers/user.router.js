@@ -385,4 +385,64 @@ userRouter.put("/:userId", protect, checkPermission(['EDIT_USER', 'ALL']), userC
  */
 userRouter.delete("/:userId", protect, checkPermission(['DELETE_USER', 'ALL']), userController.deleteUser);
 
+/**
+ * @swagger
+ * /api/users/check-exists:
+ *   post:
+ *     summary: Kiểm tra email người dùng đã tồn tại chưa
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email cần kiểm tra
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: Kiểm tra thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Check user exists successfully
+ *                 content:
+ *                   type: object
+ *                   properties:
+ *                     exists:
+ *                       type: boolean
+ *                       example: true
+ *                       description: true nếu email đã tồn tại, false nếu chưa
+ *                     email:
+ *                       type: string
+ *                       example: user@example.com
+ *                       description: Email đã kiểm tra
+ *                     fullName:
+ *                       type: string
+ *                       example: Nguyễn Văn A
+ *                       description: Tên đầy đủ của người dùng (chỉ có khi exists = true)
+ *       400:
+ *         description: Email không hợp lệ hoặc thiếu email
+ *       401:
+ *         description: Chưa đăng nhập
+ *       403:
+ *         description: Không có quyền truy cập (chỉ Admin mới được phép)
+ */
+userRouter.post("/check-exists", protect, checkPermission(['ALL']), userController.checkUserExists);
+
 export default userRouter;
