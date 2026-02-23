@@ -437,6 +437,25 @@ async function main() {
   console.log('✅ Seed InventoryLedger thành công!');
 
   console.log('🎉 ========================================');
+  // Seed SystemConfig
+  console.log('🌱 Đang khởi tạo dữ liệu SystemConfig...');
+  await prisma.systemConfig.upsert({
+    where: { key: 'INCIDENT_THRESHOLDS' },
+    update: {},
+    create: {
+      key: 'INCIDENT_THRESHOLDS',
+      value: JSON.stringify({
+        pressureLimit: 120,
+        tempLimit: 90,
+        autoRefreshInterval: 30000,
+        alertSoundEnabled: true,
+        criticalAlertThreshold: 3,
+      }),
+      description: 'Cấu hình ngưỡng phát hiện sự cố',
+    },
+  });
+  console.log('✅ Seed SystemConfig thành công!');
+
   console.log('🎉 Seed tất cả dữ liệu thành công!');
   console.log('🎉 ========================================');
   console.log('📊 Tổng kết:');
