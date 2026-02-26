@@ -62,7 +62,7 @@ const EQUIPMENT_STATUSES = ["Active", "Inactive", "Maintenance"];
  * Validate required fields for equipment creation
  */
 export function validateEquipmentRequiredFields(data) {
-  const { name, serialNumber, type, model, location, installDate } = data;
+  const { name, serialNumber, type, model, location, installDate, manufacturer } = data;
 
   if (!name) {
     throw new BadRequestException("Equipment name is required");
@@ -78,6 +78,10 @@ export function validateEquipmentRequiredFields(data) {
 
   if (!model) {
     throw new BadRequestException("Equipment model is required");
+  }
+
+  if (!manufacturer) {
+    throw new BadRequestException("Manufacturer is required");
   }
 
   if (!location) {
@@ -149,6 +153,12 @@ export function validateInstallDate(installDate) {
   if (isNaN(parsedDate.getTime())) {
     throw new BadRequestException(
       "Invalid install date format. Please provide a valid date.",
+    );
+  }
+
+  if (parsedDate > new Date()) {
+    throw new BadRequestException(
+      "Install date cannot be in the future",
     );
   }
 

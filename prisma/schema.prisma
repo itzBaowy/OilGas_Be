@@ -125,6 +125,7 @@ model Equipment {
   manufacturer    String?
   installDate     DateTime
   description     String?
+  expiredDate     DateTime?
   isDeleted       Boolean  @default(false)
   specifications  Json?    // Flexible technical specs
   lastMaintenanceDate   DateTime?
