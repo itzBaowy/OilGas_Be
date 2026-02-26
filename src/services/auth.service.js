@@ -10,6 +10,7 @@ import requestIp from 'request-ip';
 import geoip from 'geoip-lite';
 import dotenv from 'dotenv';
 import { getUserDeviceMap } from '../common/socket/init.socket.js';
+import { logPasswordChange } from '../common/helpers/audit.helper.js';
 dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -276,6 +277,9 @@ export const authService = {
         lastPasswordChangeAt: new Date() // lưu thời gian đổi mật khẩu
       },
     });
+
+    // Log audit
+    await logPasswordChange(updatedUser, req.ip);
 
     delete updatedUser.password;
 

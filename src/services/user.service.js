@@ -5,6 +5,7 @@ import { BadRequestException } from "../common/helpers/exception.helper.js";
 import bcrypt from "bcryptjs";
 import { validatePassword, validateEmail } from "../common/helpers/validate.helper.js";
 import { notifyUserCreated, notifyUserUpdated, notifyUserDeleted } from "../common/helpers/notification.helper.js";
+import { logUserCreate } from "../common/helpers/audit.helper.js";
 
 const FOLDER_IMAGE = "public/images";
 export const userService = {
@@ -123,6 +124,16 @@ export const userService = {
             },
             include: { role: true }
         });
+        
+        // Log audit
+        if (req.user) {
+            const creator = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                include: { role: true }
+            });
+            await logUserCreate(newUser, creator, req.ip);
+        }
+        
         // Send welcome notification
         await notifyUserCreated(newUser, req.user?.id);
 

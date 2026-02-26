@@ -3,7 +3,7 @@ import { buildQueryPrisma } from '../common/helpers/build_query_prisma.js';
 
 export const logService = {
   async createLog(logData) {
-    return await prisma.log.create({
+    return await prisma.apiLog.create({
       data: logData,
     });
   },
@@ -11,14 +11,14 @@ export const logService = {
   async getLogs(req) {
     const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
-    const resultPrismaPromise = prisma.log.findMany({
+    const resultPrismaPromise = prisma.apiLog.findMany({
       where: where,
       skip: index,
       take: pageSize,
       orderBy: { createdAt: 'desc' }, // Mới nhất trước
     });
 
-    const totalItemPromise = prisma.log.count({
+    const totalItemPromise = prisma.apiLog.count({
       where: where,
     });
 
@@ -36,7 +36,7 @@ export const logService = {
   async getLogById(req) {
     const { id } = req.params;
     
-    return await prisma.log.findUnique({
+    return await prisma.apiLog.findUnique({
       where: { id },
     });
   },
@@ -44,7 +44,7 @@ export const logService = {
   async deleteLog(req) {
     const { id } = req.params;
     
-    return await prisma.log.delete({
+    return await prisma.apiLog.delete({
       where: { id },
     });
   },

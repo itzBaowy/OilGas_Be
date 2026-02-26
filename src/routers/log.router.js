@@ -8,16 +8,16 @@ const logRouter = express.Router();
 /**
  * @swagger
  * tags:
- *   name: Logs
- *   description: API quản lý logs hệ thống
+ *   name: ApiLogs
+ *   description: API quản lý API logs (request/response logs)
  */
 
 /**
  * @swagger
  * /api/logs:
  *   get:
- *     summary: Lấy danh sách logs (có phân trang và lọc)
- *     tags: [Logs]
+ *     summary: Lấy danh sách API logs (có phân trang và lọc)
+ *     tags: [ApiLogs]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -103,8 +103,8 @@ logRouter.get('/', protect, checkPermission(['VIEW_AUDIT_LOG', 'ALL']), logContr
  * @swagger
  * /api/logs/{id}:
  *   get:
- *     summary: Lấy chi tiết log theo ID
- *     tags: [Logs]
+ *     summary: Lấy chi tiết API log theo ID
+ *     tags: [ApiLogs]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -167,8 +167,8 @@ logRouter.get('/:id', protect, checkPermission(['VIEW_AUDIT_LOG', 'ALL']), logCo
  * @swagger
  * /api/logs/{id}:
  *   delete:
- *     summary: Xóa log theo ID
- *     tags: [Logs]
+ *     summary: Xóa API log theo ID
+ *     tags: [ApiLogs]
  *     security:
  *       - bearerAuth: []
  *     parameters:
