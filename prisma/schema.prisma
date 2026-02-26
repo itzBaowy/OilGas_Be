@@ -46,7 +46,7 @@ model Role {
   @@map("Role")
 }
 
-model Log {
+model ApiLog {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   method      String   // GET, POST, PUT, DELETE
   path        String   // /api/auth/login
@@ -60,7 +60,27 @@ model Log {
   errorMessage String? // Error message nếu có
   createdAt   DateTime @default(now())
 
-  @@map("Log")
+  @@map("ApiLog")
+}
+
+model AuditLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  action      String   
+  description String  
+  userId      String?  @db.ObjectId
+  userEmail   String?  
+  userName    String?  
+  roleName    String?  
+  entityType  String?  
+  entityId    String?  
+  entityName  String?  
+  oldValues   String?  
+  newValues   String?  
+  ipAddress   String?  
+  metadata    Json?   
+  createdAt   DateTime @default(now())
+
+  @@map("AuditLog")
 }
 
 model LoginHistory {
