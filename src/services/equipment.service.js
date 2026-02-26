@@ -26,7 +26,9 @@ export const equipmentService = {
 
   async createEquipment(req) {
     // Validate equipment data using helper
-    const { parsedInstallDate, normalizedType } = validateEquipmentData(req.body);
+    const { parsedInstallDate, normalizedType } = validateEquipmentData(
+      req.body,
+    );
 
     const {
       name,
@@ -96,15 +98,39 @@ export const equipmentService = {
 
   //Get list equipments
   async getAllEquipment(req) {
-    const { page, pageSize, where, index } = buildQueryPrisma(req.query);
+    const { page = 1, limit = 10, type, status, location, search } = req.query;
+
+    // Parse page và pageSize thành số nguyên
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.max(1, parseInt(limit));
+    const skip = (pageNum - 1) * limitNum;
 
     // Thêm điều kiện isDeleted
-    where.isDeleted = false;
+    const where = { isDeleted: false };
+    if (type) {
+      where.type = type;
+    }
 
+    if (status) {
+      where.status = status;
+    }
+    if (location) {
+      where.location = {
+        contains: location,
+        mode: "insensitive",
+      };
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { model: { contains: search, mode: "insensitive" } },
+        { serialNumber: { contains: search, mode: "insensitive" } },
+      ];
+    }
     const resultPrismaPromise = prisma.equipment.findMany({
       where: where,
-      skip: index,
-      take: pageSize,
+      skip: skip,
+      take: limitNum,
       orderBy: { createdAt: "desc" },
     });
 
@@ -118,10 +144,10 @@ export const equipmentService = {
     ]);
 
     return {
-      page: page,
-      pageSize: pageSize,
+      page: pageNum,
+      pageSize: limitNum,
       totalItem: totalItem,
-      totalPage: Math.ceil(totalItem / pageSize),
+      totalPage: Math.ceil(totalItem / limitNum),
       items: resultPrisma,
     };
   },
@@ -271,9 +297,9 @@ export const equipmentService = {
             type: true,
             model: true,
             serialNumber: true,
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     const totalItemPromise = prisma.maintenanceHistory.count({
@@ -345,20 +371,22 @@ export const equipmentService = {
   async getMaintenanceTypes() {
     // Get distinct maintenance types using Prisma's distinct feature
     const maintenanceHistory = await prisma.maintenanceHistory.findMany({
-      distinct: ['type'],
+      distinct: ["type"],
       select: {
-        type: true
-      }
+        type: true,
+      },
     });
 
     // Convert to uppercase, filter null/empty strings, remove duplicates, and sort
-    const uniqueTypes = [...new Set(
-      maintenanceHistory
-        .map(mh => mh.type)
-        .filter(type => type && type.trim() !== '')
-        .map(type => type.toUpperCase())
-    )].sort();
+    const uniqueTypes = [
+      ...new Set(
+        maintenanceHistory
+          .map((mh) => mh.type)
+          .filter((type) => type && type.trim() !== "")
+          .map((type) => type.toUpperCase()),
+      ),
+    ].sort();
 
     return uniqueTypes;
-  }
+  },
 };
