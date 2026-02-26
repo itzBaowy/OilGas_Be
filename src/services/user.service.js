@@ -260,26 +260,6 @@ export const userService = {
             changes.phoneNumber = { from: userExist.phoneNumber, to: phoneNumber };
         }
 
-        // Handle avatar file upload (if provided)
-        if (req.file) {
-            const uploadResult = await new Promise((resolve, reject) => {
-                cloudinary.uploader
-                    .upload_stream({ folder: FOLDER_IMAGE }, (error, result) => {
-                        if (error) return reject(error);
-                        return resolve(result);
-                    })
-                    .end(req.file.buffer);
-            });
-
-            // Delete old avatar from Cloudinary (if not default)
-            if (userExist.avatarCloudId && userExist.avatarCloudId !== 'public/images/default_avatar') {
-                cloudinary.uploader.destroy(userExist.avatarCloudId);
-            }
-
-            updateData.avatarCloudId = uploadResult.public_id;
-            changes.avatarCloudId = { from: userExist.avatarCloudId, to: uploadResult.public_id };
-        }
-
         if (Object.keys(updateData).length === 0) {
             throw new BadRequestException("No changes detected");
         }
