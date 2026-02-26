@@ -376,4 +376,38 @@ authRouter.post("/logout", protect, authController.logout);
  */
 authRouter.post("/verify-device-otp", authController.verifyDeviceOtp);
 
+/**
+ * @swagger
+ * /api/auth/get-otp:
+ *   get:
+ *     summary: Lấy OTP cho dev test (không cần authentication)
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Email của user cần lấy OTP
+ *     responses:
+ *       200:
+ *         description: Lấy OTP thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 email:
+ *                   type: string
+ *                 fullName:
+ *                   type: string
+ *                 otp:
+ *                   type: string
+ *                 expiresAt:
+ *                   type: string
+ *       400:
+ *         description: Email không tồn tại hoặc OTP đã hết hạn
+ */
+authRouter.get("/get-otp", authController.getOtpForDev);
+
 export default authRouter;

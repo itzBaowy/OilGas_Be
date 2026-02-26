@@ -58,5 +58,10 @@ export const authController = {
           const result = await authService.verifyDeviceOtp(req);
           const response = responseSuccess(result, `Device verified successfully`);
           res.status(response.statusCode).json(response);
+     },
+     async getOtpForDev(req, res, next) {
+          const result = await authService.getOtpForDev(req);
+          const response = responseSuccess(result, `OTP retrieved successfully`);
+          res.status(response.statusCode).json(response);
      }
 };

@@ -414,4 +414,53 @@ export const authService = {
     return { message: 'Logout successfully' };
   },
 
+  async getOtpForDev(req) {
+    const { email } = req.query;
+
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        resetPasswordToken: true,
+        resetPasswordExpires: true
+      }
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Check if OTP exists
+    if (!user.resetPasswordToken || !user.resetPasswordExpires) {
+      throw new BadRequestException('OTP does not exist or has expired');
+    }
+
+    // Check if OTP has expired
+    const now = new Date();
+    if (now > user.resetPasswordExpires) {
+      // Remove expired OTP
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: null,
+          resetPasswordExpires: null
+        }
+      });
+      throw new BadRequestException('OTP has expired');
+    }
+
+    return {
+      email: user.email,
+      fullName: user.fullName,
+      otp: user.resetPasswordToken,
+      expiresAt: user.resetPasswordExpires
+    };
+  },
+
 };
