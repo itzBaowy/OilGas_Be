@@ -168,6 +168,89 @@ userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userCon
 
 /**
  * @swagger
+ * /api/users/profile:
+ *   patch:
+ *     summary: Cập nhật thông tin cá nhân (profile)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 example: Nguyễn Văn A
+ *                 description: Họ và tên mới
+ *               phoneNumber:
+ *                 type: string
+ *                 example: "0901234567"
+ *                 description: Số điện thoại mới
+ *               avatarCloudId:
+ *                 type: string
+ *                 example: public/images/abc123
+ *                 description: Cloudinary public_id lấy từ POST /api/users/avatar-cloud
+ *     responses:
+ *       200:
+ *         description: Cập nhật profile thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Update profile successfully
+ *                 content:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         fullName:
+ *                           type: string
+ *                         phoneNumber:
+ *                           type: string
+ *                         avatarCloudId:
+ *                           type: string
+ *                         updatedAt:
+ *                           type: string
+ *                           format: date-time
+ *                     log:
+ *                       type: object
+ *                       description: Log bản ghi thay đổi cuối cùng
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         method:
+ *                           type: string
+ *                           example: PATCH
+ *                         path:
+ *                           type: string
+ *                           example: /api/users/profile
+ *                         requestBody:
+ *                           type: string
+ *                           description: JSON các trường đã thay đổi (from/to)
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *       400:
+ *         description: Không có thay đổi nào hoặc dữ liệu không hợp lệ
+ *       401:
+ *         description: Chưa đăng nhập
+ */
+userRouter.patch("/profile", protect, userController.updateProfile);
+
+/**
+ * @swagger
  * /api/users:
  *   post:
  *     summary: Tạo người dùng mới

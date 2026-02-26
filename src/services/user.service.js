@@ -215,6 +215,73 @@ export const userService = {
         return true;
     },
 
+    async updateProfile(req) {
+        const userId = req.user.id;
+        const { fullName, phoneNumber, avatarCloudId } = req.body;
+
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { role: true },
+        });
+        if (!userExist) {
+            throw new BadRequestException("User not found");
+        }
+
+        // Build update data & track changes
+        const updateData = {};
+        const changes = {};
+
+        if (fullName !== undefined && fullName !== userExist.fullName) {
+            updateData.fullName = fullName;
+            changes.fullName = { from: userExist.fullName, to: fullName };
+        }
+        if (phoneNumber !== undefined && phoneNumber !== userExist.phoneNumber) {
+            updateData.phoneNumber = phoneNumber;
+            changes.phoneNumber = { from: userExist.phoneNumber, to: phoneNumber };
+        }
+        if (avatarCloudId !== undefined && avatarCloudId !== userExist.avatarCloudId) {
+            // Delete old avatar from Cloudinary (if not default)
+            if (userExist.avatarCloudId && userExist.avatarCloudId !== 'public/images/default_avatar') {
+                cloudinary.uploader.destroy(userExist.avatarCloudId);
+            }
+            updateData.avatarCloudId = avatarCloudId;
+            changes.avatarCloudId = { from: userExist.avatarCloudId, to: avatarCloudId };
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            throw new BadRequestException("No changes detected");
+        }
+
+        // Update user
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            include: { role: true },
+        });
+
+        // Create log entry
+        const log = await prisma.log.create({
+            data: {
+                method: req.method,
+                path: req.originalUrl,
+                statusCode: 200,
+                userId: userId,
+                userEmail: userExist.email,
+                ipAddress: req.ip || req.headers['x-forwarded-for'],
+                userAgent: req.headers['user-agent'],
+                requestBody: JSON.stringify(changes),
+                responseTime: null,
+                errorMessage: null,
+            },
+        });
+
+        // Send update notification
+        await notifyUserUpdated(userId, changes, userId);
+
+        return { user: updatedUser, log };
+    },
+
     async checkUserExists(req) {
         const { email } = req.body;
         
