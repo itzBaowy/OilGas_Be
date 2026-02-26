@@ -93,12 +93,12 @@ export const userService = {
 
     async createUsers(req) {
         const { fullName, email, password, phoneNumber, roleName } = req.body;
-        
+
         // Validate email
         validateEmail(email);
         // Validate password
         validatePassword(password);
-        
+
         // check email exists
         const userExist = await prisma.user.findUnique({
             where: { email: email }
@@ -131,7 +131,7 @@ export const userService = {
             },
             include: { role: true }
         });
-        
+
         // Log audit
         if (req.user) {
             const creator = await prisma.user.findUnique({
@@ -140,7 +140,7 @@ export const userService = {
             });
             await logUserCreate(newUser, creator, req.ip);
         }
-        
+
         // Send welcome notification
         await notifyUserCreated(newUser, req.user?.id);
 
@@ -236,6 +236,7 @@ export const userService = {
     async updateProfile(req) {
         const userId = req.user.id;
         const { fullName, phoneNumber } = req.body;
+        const { fullName, phoneNumber } = req.body;
 
         // Check if user exists
         const userExist = await prisma.user.findUnique({
@@ -257,6 +258,26 @@ export const userService = {
         if (phoneNumber !== undefined && phoneNumber !== userExist.phoneNumber) {
             updateData.phoneNumber = phoneNumber;
             changes.phoneNumber = { from: userExist.phoneNumber, to: phoneNumber };
+        }
+
+        // Handle avatar file upload (if provided)
+        if (req.file) {
+            const uploadResult = await new Promise((resolve, reject) => {
+                cloudinary.uploader
+                    .upload_stream({ folder: FOLDER_IMAGE }, (error, result) => {
+                        if (error) return reject(error);
+                        return resolve(result);
+                    })
+                    .end(req.file.buffer);
+            });
+
+            // Delete old avatar from Cloudinary (if not default)
+            if (userExist.avatarCloudId && userExist.avatarCloudId !== 'public/images/default_avatar') {
+                cloudinary.uploader.destroy(userExist.avatarCloudId);
+            }
+
+            updateData.avatarCloudId = uploadResult.public_id;
+            changes.avatarCloudId = { from: userExist.avatarCloudId, to: uploadResult.public_id };
         }
 
         if (Object.keys(updateData).length === 0) {
@@ -294,13 +315,13 @@ export const userService = {
 
     async checkUserExists(req) {
         const { email } = req.body;
-        
+
         // Validate email
         if (!email) {
             throw new BadRequestException("Email is required");
         }
         validateEmail(email);
-        
+
         // Check if user exists
         const userExist = await prisma.user.findUnique({
             where: { email: email },
@@ -309,7 +330,7 @@ export const userService = {
                 fullName: true
             }
         });
-        
+
         if (userExist) {
             return {
                 exists: true,
@@ -317,7 +338,7 @@ export const userService = {
                 fullName: userExist.fullName
             };
         }
-        
+
         return {
             exists: false,
             email: email
