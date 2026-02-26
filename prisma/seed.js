@@ -312,6 +312,192 @@ async function main() {
 
   console.log('✅ Seed Equipment thành công!');
 
+  // Seed Sequence cho Instrument
+  console.log('🌱 Đang khởi tạo dữ liệu Instrument Sequence...');
+  await prisma.sequence.upsert({
+    where: { name: 'instrument' },
+    update: {},
+    create: {
+      name: 'instrument',
+      value: 0,
+    },
+  });
+  console.log('✅ Seed Instrument Sequence thành công!');
+
+  // Seed Instrument
+  console.log('🌱 Đang khởi tạo dữ liệu Instrument...');
+
+  const instrumentTypes = ['Offshore Platform', 'Onshore Rig', 'FPSO', 'Jack-up Rig', 'Semi-submersible'];
+  const instrumentLocations = [
+    'Gulf of Mexico - Block 42',
+    'North Sea - Sector 7',
+    'Persian Gulf - Field A',
+    'West Africa - Block 15',
+    'South China Sea - Platform 3',
+    'Bass Strait - Field X',
+    'Campos Basin - Block 18',
+    'Caspian Sea - Sector 2'
+  ];
+  const instrumentManufacturers = ['Keppel Offshore', 'Samsung Heavy Industries', 'Hyundai Heavy Industries', 'SBM Offshore', 'MODEC'];
+  const instrumentModels = ['KFELS B Class', 'Frigstad D90', 'GustoMSC CJ70', 'FPSO Modular', 'TLP Design'];
+  const instrumentStatuses = ['Active', 'Active', 'Active', 'Maintenance', 'Active', 'Active', 'Inactive', 'Active'];
+
+  const instruments = [
+    {
+      instrumentId: 'INS-001',
+      name: 'Alpha Platform',
+      type: 'Offshore Platform',
+      location: 'Gulf of Mexico - Block 42',
+      manufacturer: 'Keppel Offshore',
+      model: 'KFELS B Class',
+      status: 'Active',
+      installDate: new Date('2020-06-15'),
+      description: 'Primary offshore drilling platform for deep water operations',
+    },
+    {
+      instrumentId: 'INS-002',
+      name: 'Beta Rig',
+      type: 'Onshore Rig',
+      location: 'North Sea - Sector 7',
+      manufacturer: 'Samsung Heavy Industries',
+      model: 'Land Rig 2000',
+      status: 'Active',
+      installDate: new Date('2019-03-22'),
+      description: 'High-capacity onshore drilling rig',
+    },
+    {
+      instrumentId: 'INS-003',
+      name: 'FPSO Gamma',
+      type: 'FPSO',
+      location: 'Persian Gulf - Field A',
+      manufacturer: 'SBM Offshore',
+      model: 'FPSO Modular',
+      status: 'Active',
+      installDate: new Date('2018-11-10'),
+      description: 'Floating Production Storage and Offloading unit',
+    },
+    {
+      instrumentId: 'INS-004',
+      name: 'Delta Jack-up',
+      type: 'Jack-up Rig',
+      location: 'West Africa - Block 15',
+      manufacturer: 'Keppel Offshore',
+      model: 'KFELS B Class',
+      status: 'Maintenance',
+      installDate: new Date('2017-08-05'),
+      description: 'Self-elevating mobile drilling unit',
+    },
+    {
+      instrumentId: 'INS-005',
+      name: 'Epsilon Semi-sub',
+      type: 'Semi-submersible',
+      location: 'South China Sea - Platform 3',
+      manufacturer: 'Hyundai Heavy Industries',
+      model: 'Frigstad D90',
+      status: 'Active',
+      installDate: new Date('2021-01-20'),
+      description: 'Ultra-deepwater semi-submersible drilling rig',
+    },
+    {
+      instrumentId: 'INS-006',
+      name: 'Zeta Platform',
+      type: 'Offshore Platform',
+      location: 'Bass Strait - Field X',
+      manufacturer: 'MODEC',
+      model: 'TLP Design',
+      status: 'Active',
+      installDate: new Date('2022-04-12'),
+      description: 'Tension leg platform for moderate water depths',
+    },
+    {
+      instrumentId: 'INS-007',
+      name: 'Eta Rig',
+      type: 'Onshore Rig',
+      location: 'Campos Basin - Block 18',
+      manufacturer: 'Samsung Heavy Industries',
+      model: 'Land Rig 3000',
+      status: 'Inactive',
+      installDate: new Date('2016-09-30'),
+      description: 'Decommissioned onshore drilling rig',
+    },
+    {
+      instrumentId: 'INS-008',
+      name: 'Theta FPSO',
+      type: 'FPSO',
+      location: 'Caspian Sea - Sector 2',
+      manufacturer: 'SBM Offshore',
+      model: 'FPSO Advanced',
+      status: 'Active',
+      installDate: new Date('2023-02-28'),
+      description: 'Latest generation FPSO with enhanced storage capacity',
+    },
+  ];
+
+  for (const instrument of instruments) {
+    await prisma.instrument.upsert({
+      where: { instrumentId: instrument.instrumentId },
+      update: {},
+      create: {
+        ...instrument,
+        isDeleted: false,
+      },
+    });
+    console.log(`✅ Tạo instrument: ${instrument.instrumentId} - ${instrument.name}`);
+  }
+
+  // Update instrument sequence value
+  await prisma.sequence.update({
+    where: { name: 'instrument' },
+    data: { value: instruments.length },
+  });
+
+  console.log('✅ Seed Instrument thành công!');
+
+  // Seed InstrumentEngineer (assign some engineers to instruments)
+  console.log('🌱 Đang khởi tạo dữ liệu InstrumentEngineer...');
+  
+  const allInstruments = await prisma.instrument.findMany();
+  const engineerUsers = await prisma.user.findMany({
+    where: {
+      role: {
+        name: 'Engineer'
+      }
+    },
+    take: 5
+  });
+
+  const engineerAssignments = [];
+  for (let i = 0; i < Math.min(allInstruments.length, 5); i++) {
+    const instrument = allInstruments[i];
+    const engineer = engineerUsers[i % engineerUsers.length];
+    
+    if (engineer) {
+      engineerAssignments.push({
+        instrumentId: instrument.id,
+        engineerId: engineer.id,
+        engineerName: engineer.fullName,
+        engineerEmail: engineer.email,
+        role: i % 2 === 0 ? 'Primary' : 'Support',
+      });
+    }
+  }
+
+  for (const assignment of engineerAssignments) {
+    await prisma.instrumentEngineer.upsert({
+      where: {
+        instrumentId_engineerId: {
+          instrumentId: assignment.instrumentId,
+          engineerId: assignment.engineerId,
+        }
+      },
+      update: {},
+      create: assignment,
+    });
+  }
+  console.log(`✅ Tạo ${engineerAssignments.length} instrument-engineer assignments`);
+
+  console.log('✅ Seed InstrumentEngineer thành công!');
+
   // Seed MaintenanceHistory
   console.log('🌱 Đang khởi tạo dữ liệu MaintenanceHistory...');
   
@@ -463,6 +649,8 @@ async function main() {
   console.log(`   - Users: ${users.length}`);
   console.log(`   - Warehouses: ${warehouses.length}`);
   console.log(`   - Equipment: ${equipments.length}`);
+  console.log(`   - Instruments: ${instruments.length}`);
+  console.log(`   - Instrument Engineers: ${engineerAssignments.length}`);
   console.log(`   - Maintenance History: ${maintenanceHistories.length}`);
   console.log(`   - Inventories: ${inventories.length}`);
   console.log(`   - Inventory Ledgers: ${ledgers.length}`);

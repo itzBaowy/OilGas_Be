@@ -236,3 +236,170 @@ export function validateEquipmentUpdateData(data) {
     normalizedType: normalizedType,
   };
 }
+
+// ==================== INSTRUMENT VALIDATION ====================
+
+// Valid instrument types
+const INSTRUMENT_TYPES = [
+  "Offshore Platform",
+  "Onshore Rig",
+  "FPSO",
+  "Jack-up Rig",
+  "Semi-submersible",
+];
+
+// Valid instrument statuses
+const INSTRUMENT_STATUSES = ["Active", "Inactive", "Maintenance", "Decommissioned"];
+
+/**
+ * Get instrument types array
+ */
+export function getInstrumentTypes() {
+  return INSTRUMENT_TYPES;
+}
+
+/**
+ * Get instrument statuses array
+ */
+export function getInstrumentStatuses() {
+  return INSTRUMENT_STATUSES;
+}
+
+/**
+ * Validate instrument type
+ */
+export function validateInstrumentType(type) {
+  if (!type) {
+    throw new BadRequestException("Instrument type is required");
+  }
+
+  if (!INSTRUMENT_TYPES.includes(type)) {
+    throw new BadRequestException(
+      `Invalid type. Must be one of: ${INSTRUMENT_TYPES.join(", ")}`
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Validate instrument status
+ */
+export function validateInstrumentStatus(status) {
+  if (!status) {
+    return true; // Status is optional, defaults to "Active"
+  }
+
+  if (!INSTRUMENT_STATUSES.includes(status)) {
+    throw new BadRequestException(
+      `Invalid status. Must be one of: ${INSTRUMENT_STATUSES.join(", ")}`
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Validate required fields for instrument creation
+ */
+export function validateInstrumentRequiredFields(data) {
+  const { name, type, location } = data;
+
+  if (!name) {
+    throw new BadRequestException("Instrument name is required");
+  }
+
+  if (!type) {
+    throw new BadRequestException("Instrument type is required");
+  }
+
+  if (!location) {
+    throw new BadRequestException("Location is required");
+  }
+
+  return true;
+}
+
+/**
+ * Validate all instrument data for creation
+ */
+export function validateInstrumentData(data) {
+  const { status, installDate } = data;
+
+  // Validate required fields
+  validateInstrumentRequiredFields(data);
+
+  // Validate type
+  validateInstrumentType(data.type);
+
+  // Validate status if provided
+  if (status) {
+    validateInstrumentStatus(status);
+  }
+
+  // Parse install date if provided
+  let parsedInstallDate = null;
+  if (installDate) {
+    parsedInstallDate = new Date(installDate);
+    if (isNaN(parsedInstallDate.getTime())) {
+      throw new BadRequestException(
+        "Invalid install date format. Please provide a valid date."
+      );
+    }
+  }
+
+  return {
+    isValid: true,
+    parsedInstallDate,
+  };
+}
+
+/**
+ * Validate instrument data for update (optional fields)
+ */
+export function validateInstrumentUpdateData(data) {
+  const { type, status, installDate, lastMaintenanceDate, nextMaintenanceDate } = data;
+
+  // Validate type if provided
+  if (type) {
+    validateInstrumentType(type);
+  }
+
+  // Validate status if provided
+  if (status) {
+    validateInstrumentStatus(status);
+  }
+
+  // Parse dates if provided
+  let parsedInstallDate = null;
+  let parsedLastMaintenanceDate = null;
+  let parsedNextMaintenanceDate = null;
+
+  if (installDate) {
+    parsedInstallDate = new Date(installDate);
+    if (isNaN(parsedInstallDate.getTime())) {
+      throw new BadRequestException("Invalid install date format.");
+    }
+  }
+
+  if (lastMaintenanceDate) {
+    parsedLastMaintenanceDate = new Date(lastMaintenanceDate);
+    if (isNaN(parsedLastMaintenanceDate.getTime())) {
+      throw new BadRequestException("Invalid last maintenance date format.");
+    }
+  }
+
+  if (nextMaintenanceDate) {
+    parsedNextMaintenanceDate = new Date(nextMaintenanceDate);
+    if (isNaN(parsedNextMaintenanceDate.getTime())) {
+      throw new BadRequestException("Invalid next maintenance date format.");
+    }
+  }
+
+  return {
+    isValid: true,
+    parsedInstallDate,
+    parsedLastMaintenanceDate,
+    parsedNextMaintenanceDate,
+  };
+}

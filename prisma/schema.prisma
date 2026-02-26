@@ -241,3 +241,50 @@ model SystemConfig {
 
   @@map("SystemConfig")
 }
+
+model Instrument {
+  id                  String       @id @default(auto()) @map("_id") @db.ObjectId
+  instrumentId        String       @unique  // Custom: INS-001, INS-002, ...
+  name                String
+  type                String       // "Offshore Platform", "Onshore Rig", "FPSO", "Jack-up Rig", "Semi-submersible"
+  location            String
+  manufacturer        String?
+  model               String?
+  installDate         DateTime?
+  status              String       @default("Active") // Active, Inactive, Maintenance, Decommissioned
+  description         String?
+  
+  // Decommission fields
+  decommissionReason  String?
+  decommissionedAt    DateTime?
+  
+  // Soft delete
+  isDeleted           Boolean      @default(false)
+  
+  // Maintenance tracking
+  lastMaintenanceDate DateTime?
+  nextMaintenanceDate DateTime?
+  
+  // Timestamps
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  // Relations
+  assignedEngineers   InstrumentEngineer[]
+
+  @@map("Instrument")
+}
+
+model InstrumentEngineer {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  instrumentId  String     @db.ObjectId
+  instrument    Instrument @relation(fields: [instrumentId], references: [id])
+  engineerId    String     @db.ObjectId  // Reference to User.id
+  engineerName  String     // Denormalized for performance
+  engineerEmail String     // Denormalized for performance
+  role          String     // "Primary" | "Support"
+  assignedAt    DateTime   @default(now())
+
+  @@unique([instrumentId, engineerId])  // Prevent duplicate assignments
+  @@map("InstrumentEngineer")
+}
