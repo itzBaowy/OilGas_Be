@@ -177,7 +177,7 @@ userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userCon
  *     requestBody:
  *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
  *             properties:
@@ -189,10 +189,6 @@ userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userCon
  *                 type: string
  *                 example: "0901234567"
  *                 description: Số điện thoại mới
- *               avatar:
- *                 type: string
- *                 format: binary
- *                 description: File ảnh avatar mới (jpg, jpeg, png, gif) — tùy chọn
  *     responses:
  *       200:
  *         description: Cập nhật profile thành công
@@ -247,7 +243,7 @@ userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userCon
  *       401:
  *         description: Chưa đăng nhập
  */
-userRouter.patch("/profile", protect, uploadMemory.single("avatar"), userController.updateProfile);
+userRouter.patch("/profile", protect, userController.updateProfile);
 
 /**
  * @swagger
