@@ -189,10 +189,6 @@ userRouter.post("/avatar-cloud", protect, uploadMemory.single("avatar"), userCon
  *                 type: string
  *                 example: "0901234567"
  *                 description: Số điện thoại mới
- *               avatarCloudId:
- *                 type: string
- *                 example: public/images/abc123
- *                 description: Cloudinary public_id lấy từ POST /api/users/avatar-cloud
  *     responses:
  *       200:
  *         description: Cập nhật profile thành công

@@ -228,7 +228,7 @@ export const userService = {
 
     async updateProfile(req) {
         const userId = req.user.id;
-        const { fullName, phoneNumber, avatarCloudId } = req.body;
+        const { fullName, phoneNumber } = req.body;
 
         // Check if user exists
         const userExist = await prisma.user.findUnique({
@@ -250,14 +250,6 @@ export const userService = {
         if (phoneNumber !== undefined && phoneNumber !== userExist.phoneNumber) {
             updateData.phoneNumber = phoneNumber;
             changes.phoneNumber = { from: userExist.phoneNumber, to: phoneNumber };
-        }
-        if (avatarCloudId !== undefined && avatarCloudId !== userExist.avatarCloudId) {
-            // Delete old avatar from Cloudinary (if not default)
-            if (userExist.avatarCloudId && userExist.avatarCloudId !== 'public/images/default_avatar') {
-                cloudinary.uploader.destroy(userExist.avatarCloudId);
-            }
-            updateData.avatarCloudId = avatarCloudId;
-            changes.avatarCloudId = { from: userExist.avatarCloudId, to: avatarCloudId };
         }
 
         if (Object.keys(updateData).length === 0) {
