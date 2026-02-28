@@ -271,6 +271,7 @@ model Instrument {
   
   // Relations
   assignedEngineers   InstrumentEngineer[]
+  maintenanceHistory  InstrumentMaintenanceHistory[]
 
   @@map("Instrument")
 }
@@ -287,4 +288,21 @@ model InstrumentEngineer {
 
   @@unique([instrumentId, engineerId])  // Prevent duplicate assignments
   @@map("InstrumentEngineer")
+}
+
+// Instrument Maintenance History Model - Tracks maintenance records for instruments
+model InstrumentMaintenanceHistory {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  instrumentId  String     @db.ObjectId
+  instrument    Instrument @relation(fields: [instrumentId], references: [id])
+  date          DateTime
+  type          String     // Preventive, Corrective, Calibration, Inspection, Replacement
+  description   String
+  performedBy   String     // Name of technician/engineer who performed the maintenance
+  status        String     // Completed, Pending, Cancelled
+  cost          Float?     // Optional maintenance cost
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("InstrumentMaintenanceHistory")
 }

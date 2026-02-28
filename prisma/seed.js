@@ -532,6 +532,45 @@ async function main() {
   }
   console.log(`✅ Tạo ${maintenanceHistories.length} maintenance history records`);
 
+  // Seed InstrumentMaintenanceHistory
+  console.log('🌱 Đang khởi tạo dữ liệu InstrumentMaintenanceHistory...');
+  
+  // Reuse allInstruments from above (already fetched for InstrumentEngineer)
+  const instrumentMaintenanceTypes = ['Preventive', 'Corrective', 'Calibration', 'Inspection', 'Replacement'];
+  const instrumentMaintenanceStatuses = ['Completed', 'Pending', 'Cancelled'];
+  const technicians = ['John Smith', 'Jane Doe', 'Mike Johnson', 'Sarah Williams', 'David Brown', 'Robert Chen', 'Emily Martinez'];
+
+  const instrumentMaintenanceHistories = [];
+  for (let i = 0; i < allInstruments.length; i++) {
+    const instrument = allInstruments[i];
+    // Tạo 3-5 lịch sử bảo trì cho mỗi instrument
+    const maintenanceCount = 3 + (i % 3);
+    
+    for (let j = 0; j < maintenanceCount; j++) {
+      const monthOffset = (i * maintenanceCount + j) % 12;
+      const dayOffset = ((i + j) % 28) + 1;
+      
+      instrumentMaintenanceHistories.push({
+        instrumentId: instrument.id,
+        date: new Date(2024, monthOffset, dayOffset),
+        type: instrumentMaintenanceTypes[(i + j) % instrumentMaintenanceTypes.length],
+        description: `${instrumentMaintenanceTypes[(i + j) % instrumentMaintenanceTypes.length]} maintenance for ${instrument.name} - Routine inspection and servicing`,
+        performedBy: technicians[(i + j) % technicians.length],
+        status: instrumentMaintenanceStatuses[(i + j) % instrumentMaintenanceStatuses.length],
+        cost: instrumentMaintenanceStatuses[(i + j) % instrumentMaintenanceStatuses.length] === 'Completed' 
+          ? 1500 + (i * 500) + (j * 200) 
+          : null, // Instruments are more expensive to maintain
+      });
+    }
+  }
+
+  for (const maintenance of instrumentMaintenanceHistories) {
+    await prisma.instrumentMaintenanceHistory.create({
+      data: maintenance,
+    });
+  }
+  console.log(`✅ Tạo ${instrumentMaintenanceHistories.length} instrument maintenance history records`);
+
   // Seed Inventory
   console.log('🌱 Đang khởi tạo dữ liệu Inventory...');
   
@@ -651,7 +690,8 @@ async function main() {
   console.log(`   - Equipment: ${equipments.length}`);
   console.log(`   - Instruments: ${instruments.length}`);
   console.log(`   - Instrument Engineers: ${engineerAssignments.length}`);
-  console.log(`   - Maintenance History: ${maintenanceHistories.length}`);
+  console.log(`   - Equipment Maintenance History: ${maintenanceHistories.length}`);
+  console.log(`   - Instrument Maintenance History: ${instrumentMaintenanceHistories.length}`);
   console.log(`   - Inventories: ${inventories.length}`);
   console.log(`   - Inventory Ledgers: ${ledgers.length}`);
   console.log('🎉 ========================================');
