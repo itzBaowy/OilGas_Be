@@ -284,6 +284,156 @@ instrumentRouter.get(
 
 /**
  * @swagger
+ * /api/instruments/maintenance-statuses:
+ *   get:
+ *     summary: Lấy danh sách trạng thái bảo trì instrument (Get instrument maintenance statuses)
+ *     description: Get maintenance statuses for instruments (Completed, In Progress, Scheduled, Cancelled)
+ *     tags: [Instruments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Instrument maintenance statuses retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Instrument maintenance statuses retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["Completed", "In Progress", "Scheduled", "Cancelled"]
+ */
+instrumentRouter.get(
+  "/maintenance-statuses",
+  protect,
+  checkPermission(["VIEW_INSTRUMENT", "ALL"]),
+  instrumentController.getInstrumentMaintenanceStatuses
+);
+
+/**
+ * @swagger
+ * /api/instruments/maintenance-grouped:
+ *   get:
+ *     summary: Lấy bảo trì nhóm theo instrument (Get maintenance grouped by instrument)
+ *     description: Get maintenance records grouped by instrument for accordion view. Returns groups with instrument info, summary stats, and nested records.
+ *     tags: [Instruments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         description: Filter by maintenance type (Preventive, Corrective, Calibration, etc.)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filter by status (Completed, In Progress, Scheduled, Cancelled)
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date filter (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date filter (YYYY-MM-DD)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in description, performedBy, or instrument name
+ *     responses:
+ *       200:
+ *         description: Maintenance records grouped by instrument retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Maintenance records grouped by instrument retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     groups:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           instrument:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: INS-001
+ *                               name:
+ *                                 type: string
+ *                                 example: Alpha Platform
+ *                               type:
+ *                                 type: string
+ *                                 example: Offshore Platform
+ *                           records:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                 date:
+ *                                   type: string
+ *                                   format: date-time
+ *                                 type:
+ *                                   type: string
+ *                                 description:
+ *                                   type: string
+ *                                 performedBy:
+ *                                   type: string
+ *                                 status:
+ *                                   type: string
+ *                                 cost:
+ *                                   type: number
+ *                           statusSummary:
+ *                             type: object
+ *                             additionalProperties:
+ *                               type: integer
+ *                             example: {"Completed": 5, "In Progress": 2}
+ *                           totalRecords:
+ *                             type: integer
+ *                           totalCost:
+ *                             type: number
+ *                     totalGroups:
+ *                       type: integer
+ *                     totalRecords:
+ *                       type: integer
+ *                     totalCost:
+ *                       type: number
+ */
+instrumentRouter.get(
+  "/maintenance-grouped",
+  protect,
+  checkPermission(["VIEW_INSTRUMENT", "ALL"]),
+  instrumentController.getMaintenanceGrouped
+);
+
+/**
+ * @swagger
  * /api/instruments/maintenance-history:
  *   get:
  *     summary: Lấy tất cả lịch sử bảo trì instrument (Get all instrument maintenance history)
@@ -311,7 +461,6 @@ instrumentRouter.get(
  *         schema:
  *           type: string
  *         description: JSON string of filters (e.g. {"type":"Preventive","status":"Completed","instrumentId":"objectId"})
- *         example: {"type":"Preventive","status":"Completed"}
  *       - in: query
  *         name: startDate
  *         schema:

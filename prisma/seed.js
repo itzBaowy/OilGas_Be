@@ -540,18 +540,44 @@ async function main() {
   const instrumentMaintenanceStatuses = ['Completed', 'Pending', 'Cancelled'];
   const technicians = ['John Smith', 'Jane Doe', 'Mike Johnson', 'Sarah Williams', 'David Brown', 'Robert Chen', 'Emily Martinez'];
 
+  // Assign equipment to instruments (distribute equipment among instruments)
+  const equipmentPerInstrument = Math.ceil(allEquipments.length / allInstruments.length);
+  for (let i = 0; i < allInstruments.length; i++) {
+    const instrument = allInstruments[i];
+    const startIdx = i * equipmentPerInstrument;
+    const endIdx = Math.min(startIdx + equipmentPerInstrument, allEquipments.length);
+    
+    for (let j = startIdx; j < endIdx; j++) {
+      await prisma.equipment.update({
+        where: { id: allEquipments[j].id },
+        data: { instrumentId: instrument.id },
+      });
+      // Update local reference
+      allEquipments[j].instrumentId = instrument.id;
+    }
+  }
+  console.log(`✅ Assigned ${allEquipments.length} equipments to ${allInstruments.length} instruments`);
+
   const instrumentMaintenanceHistories = [];
   for (let i = 0; i < allInstruments.length; i++) {
     const instrument = allInstruments[i];
-    // Tạo 3-5 lịch sử bảo trì cho mỗi instrument
+    // Get equipments for this instrument
+    const instrumentEquipments = allEquipments.filter(eq => eq.instrumentId === instrument.id);
+    
+    // Tạo 3-5 lịch sử bảo trì cho mỗi instrument, mỗi cái link với 1 equipment
     const maintenanceCount = 3 + (i % 3);
     
     for (let j = 0; j < maintenanceCount; j++) {
       const monthOffset = (i * maintenanceCount + j) % 12;
       const dayOffset = ((i + j) % 28) + 1;
+      // Pick equipment from this instrument's equipment list
+      const equipment = instrumentEquipments.length > 0 
+        ? instrumentEquipments[j % instrumentEquipments.length] 
+        : null;
       
       instrumentMaintenanceHistories.push({
         instrumentId: instrument.id,
+        equipmentId: equipment?.id || null,
         date: new Date(2024, monthOffset, dayOffset),
         type: instrumentMaintenanceTypes[(i + j) % instrumentMaintenanceTypes.length],
         description: `${instrumentMaintenanceTypes[(i + j) % instrumentMaintenanceTypes.length]} maintenance for ${instrument.name} - Routine inspection and servicing`,

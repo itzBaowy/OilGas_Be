@@ -275,11 +275,17 @@ export const equipmentService = {
       where.date = {};
 
       if (req.query.startDate) {
-        where.date.gte = new Date(req.query.startDate);
+        // Set to start of day (00:00:00.000)
+        const startDate = new Date(req.query.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        where.date.gte = startDate;
       }
 
       if (req.query.endDate) {
-        where.date.lte = new Date(req.query.endDate);
+        // Set to end of day (23:59:59.999)
+        const endDate = new Date(req.query.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        where.date.lte = endDate;
       }
     }
 
@@ -340,11 +346,17 @@ export const equipmentService = {
       whereClause.date = {};
 
       if (queryParams.startDate) {
-        whereClause.date.gte = new Date(queryParams.startDate);
+        // Set to start of day (00:00:00.000)
+        const startDate = new Date(queryParams.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        whereClause.date.gte = startDate;
       }
 
       if (queryParams.endDate) {
-        whereClause.date.lte = new Date(queryParams.endDate);
+        // Set to end of day (23:59:59.999)
+        const endDate = new Date(queryParams.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        whereClause.date.lte = endDate;
       }
     }
 
