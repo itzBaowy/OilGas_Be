@@ -152,8 +152,14 @@ model Equipment {
   nextMaintenanceDate   DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  // Relation to Instrument (Oil Rig) - Equipment belongs to an Instrument
+  instrumentId    String?  @db.ObjectId
+  instrument      Instrument? @relation(fields: [instrumentId], references: [id])
+  
   inventories     Inventory[]
   maintenanceHistory    MaintenanceHistory[]
+  instrumentMaintenanceHistory  InstrumentMaintenanceHistory[]
 
   @@map("Equipment")
 }
@@ -300,6 +306,7 @@ model Instrument {
   // Relations
   assignedEngineers   InstrumentEngineer[]
   maintenanceHistory  InstrumentMaintenanceHistory[]
+  equipments          Equipment[]  // Equipment belongs to this Instrument
 
   @@map("Instrument")
 }
@@ -323,6 +330,8 @@ model InstrumentMaintenanceHistory {
   id            String     @id @default(auto()) @map("_id") @db.ObjectId
   instrumentId  String     @db.ObjectId
   instrument    Instrument @relation(fields: [instrumentId], references: [id])
+  equipmentId   String?    @db.ObjectId  // Optional relation to Equipment
+  equipment     Equipment? @relation(fields: [equipmentId], references: [id])
   date          DateTime
   type          String     // Preventive, Corrective, Calibration, Inspection, Replacement
   description   String
