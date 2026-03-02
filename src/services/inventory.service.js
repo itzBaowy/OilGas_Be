@@ -1,6 +1,7 @@
 import prisma from "../prisma/connect.prisma.js";
 import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 import { BadRequestException, NotFoundException } from "../common/helpers/exception.helper.js";
+import { notifyWarehouseCapacityExceeded } from "../common/helpers/notification.helper.js";
 
 export const inventoryService = {
     
@@ -153,6 +154,13 @@ export const inventoryService = {
             throw new NotFoundException("Warehouse does not exist");
         }
 
+        // Check warehouse status - không cho nhập hàng khi đang bảo trì
+        if (warehouse.status === 'MAINTENANCE') {
+            throw new BadRequestException(
+                `Warehouse "${warehouse.name}" is currently under MAINTENANCE and cannot receive inventory`
+            );
+        }
+
         // Validate equipment (SKU) exists (accept both ObjectId and custom equipmentId like EQ-001)
         const equipment = await this.findEquipment(equipment_id);
 
@@ -175,8 +183,26 @@ export const inventoryService = {
         const currentQuantity = inventory ? inventory.quantity : 0;
         const newQuantity = currentQuantity + quantity;
 
-        // Check warehouse capacity (optional enhancement)
-        // For now, we'll just update the inventory
+        // Check warehouse capacity - tổng tất cả inventory trong warehouse + số mới không được vượt capacity
+        const totalQuantityAggregate = await prisma.inventory.aggregate({
+            where: { warehouseId: warehouse.id },
+            _sum: { quantity: true }
+        });
+        const totalCurrentQuantity = totalQuantityAggregate._sum.quantity || 0;
+        // Trừ đi số lượng hiện tại của item này (sẽ được cộng lại với newQuantity)
+        const totalAfterReceive = totalCurrentQuantity - currentQuantity + newQuantity;
+
+        if (totalAfterReceive > warehouse.capacity) {
+            const available = warehouse.capacity - (totalCurrentQuantity - currentQuantity);
+            // Gửi thông báo cho người dùng trước khi chặn thao tác
+            await notifyWarehouseCapacityExceeded(userId, warehouse, quantity, available);
+            throw new BadRequestException(
+                `Warehouse capacity exceeded. Capacity: ${warehouse.capacity}, ` +
+                `Currently used: ${totalCurrentQuantity - currentQuantity}, ` +
+                `Available: ${available}, ` +
+                `Requested: ${quantity}`
+            );
+        }
 
         // Calculate stock status
         const stockStatus = this.calculateStockStatus(newQuantity);
