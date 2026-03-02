@@ -1,7 +1,7 @@
 import prisma from "../prisma/connect.prisma.js";
 import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 import { BadRequestException, NotFoundException } from "../common/helpers/exception.helper.js";
-import { notifyWarehouseCapacityExceeded } from "../common/helpers/notification.helper.js";
+import { notifyWarehouseCapacityExceeded, notifyInventoryReceived, notifyInventoryDispatched } from "../common/helpers/notification.helper.js";
 
 export const inventoryService = {
     
@@ -246,6 +246,9 @@ export const inventoryService = {
             }
         });
 
+        // Gửi thông báo thành công
+        await notifyInventoryReceived(userId, warehouse, equipment, quantity, newQuantity);
+
         return {
             inventory,
             ledger,
@@ -344,6 +347,9 @@ export const inventoryService = {
                 currentQuantity: newQuantity
             };
         }
+
+        // Gửi thông báo thành công
+        await notifyInventoryDispatched(userId, warehouse, equipment, quantity, newQuantity);
 
         return {
             inventory: updatedInventory,
