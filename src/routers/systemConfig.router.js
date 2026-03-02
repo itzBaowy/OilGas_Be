@@ -118,7 +118,7 @@ systemConfigRouter.put('/', protect, checkRole(['Admin']), systemConfigControlle
  * @swagger
  * /api/system-config/reset:
  *   post:
- *     summary: Reset về mặc định (Admin — tùy chọn, FE chưa gọi)
+ *     summary: Reset về mặc định (Admin only)
  *     tags: [System Config]
  *     security:
  *       - bearerAuth: []
