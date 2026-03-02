@@ -142,3 +142,45 @@ export const notifyWarehouseCapacityExceeded = async (userId, warehouse, request
         console.error('Error sending warehouse capacity exceeded notification:', error);
     }
 };
+
+export const notifyInventoryReceived = async (userId, warehouse, equipment, quantity, newQuantity) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Inventory Received Successfully',
+                message: `Received ${quantity} unit(s) of "${equipment.name}" (${equipment.equipmentId}) ` +
+                         `into "${warehouse.name}" (${warehouse.warehouseId}). ` +
+                         `New stock: ${newQuantity} unit(s).`,
+                type: 'SUCCESS',
+                category: 'INVENTORY',
+                relatedId: warehouse.id,
+                link: `/warehouse`,
+            },
+            user: { id: userId },
+        });
+    } catch (error) {
+        console.error('Error sending inventory received notification:', error);
+    }
+};
+
+export const notifyInventoryDispatched = async (userId, warehouse, equipment, quantity, remainingQuantity) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Inventory Dispatched Successfully',
+                message: `Dispatched ${quantity} unit(s) of "${equipment.name}" (${equipment.equipmentId}) ` +
+                         `from "${warehouse.name}" (${warehouse.warehouseId}). ` +
+                         `Remaining stock: ${remainingQuantity} unit(s).`,
+                type: 'SUCCESS',
+                category: 'INVENTORY',
+                relatedId: warehouse.id,
+                link: `/warehouse`,
+            },
+            user: { id: userId },
+        });
+    } catch (error) {
+        console.error('Error sending inventory dispatched notification:', error);
+    }
+};
