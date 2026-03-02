@@ -1,5 +1,5 @@
 import prisma from "../prisma/connect.prisma.js";
-import { BadRequestException } from "../common/helpers/exception.helper.js";
+import { BadRequestException, NotFoundException } from "../common/helpers/exception.helper.js";
 import {
   validateEquipmentData,
   validateEquipmentUpdateData,
@@ -158,7 +158,7 @@ export const equipmentService = {
     });
 
     if (!equipment || equipment.isDeleted) {
-      throw new BadRequestException("Equipment not found");
+      throw new NotFoundException("Equipment not found");
     }
 
     return equipment;
@@ -188,7 +188,7 @@ export const equipmentService = {
     });
 
     if (!existingEquipment || existingEquipment.isDeleted) {
-      throw new BadRequestException("Equipment not found");
+      throw new NotFoundException("Equipment not found");
     }
 
     // Validate update data (type and status if provided)
@@ -204,13 +204,6 @@ export const equipmentService = {
           `Equipment with name "${name}" already exists`,
         );
       }
-    }
-
-    // Check if status is changing
-    if (status && status !== existingEquipment.status) {
-      console.log(
-        `Status changed from ${existingEquipment.status} to ${status} for equipment ${existingEquipment.equipmentId}`,
-      );
     }
 
     const updateData = {};
@@ -251,7 +244,7 @@ export const equipmentService = {
     });
 
     if (!equipment || equipment.isDeleted) {
-      throw new BadRequestException("Equipment not found");
+      throw new NotFoundException("Equipment not found");
     }
 
     if (equipment.status === "Active") {
@@ -269,6 +262,26 @@ export const equipmentService = {
   },
   async getAllMaintenanceHistory(req) {
     const { page, pageSize, where, index } = buildQueryPrisma(req.query);
+
+    // Handle equipmentId filter separately (not from JSON filters)
+    // FE sends equipmentId as custom ID (EQ-001), need to lookup ObjectId
+    if (req.query.equipmentId) {
+      const equipment = await prisma.equipment.findUnique({
+        where: { equipmentId: req.query.equipmentId },
+      });
+      if (equipment) {
+        where.equipmentId = equipment.id; // Use ObjectId for exact match
+      } else {
+        // Equipment not found, return empty result
+        return {
+          page: page,
+          pageSize: pageSize,
+          totalItem: 0,
+          totalPage: 0,
+          items: [],
+        };
+      }
+    }
 
     // Add date range filter if provided
     if (req.query.startDate || req.query.endDate) {
@@ -333,7 +346,7 @@ export const equipmentService = {
     });
 
     if (!equipment || equipment.isDeleted) {
-      throw new BadRequestException("Equipment not found");
+      throw new NotFoundException("Equipment not found");
     }
 
     // Build where clause with optional date range

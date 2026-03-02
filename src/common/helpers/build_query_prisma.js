@@ -2,7 +2,7 @@ export function buildQueryPrisma(query) {
   let { page, pageSize, filters } = query;
 
   const pageDefault = 1;
-  const pageSizeDefault = 3;
+  const pageSizeDefault = 10;
 
   // Đảm bảo là số
   page = Number(page);
@@ -19,7 +19,7 @@ export function buildQueryPrisma(query) {
   try {
     filters = JSON.parse(filters);
   } catch (error) {
-    console.log("Wrong json format");
+    // Invalid JSON format, use empty filters
     filters = {};
   }
 
@@ -27,7 +27,6 @@ export function buildQueryPrisma(query) {
   for (const [key, value] of Object.entries(filters)) {
     // string
     if (typeof value === "string") {
-      console.log(`Detected key ${key}: value is a string`, value);
       filters[key] = {
         contains: value,
       };
@@ -37,8 +36,6 @@ export function buildQueryPrisma(query) {
   }
 
   const index = (page - 1) * pageSize;
-
-  console.log("query", { page, pageSize, index, filters });
 
   const where = {
     ...filters,
