@@ -271,7 +271,7 @@ export const userService = {
         });
 
         // Create log entry
-        const log = await prisma.log.create({
+        const log = await prisma.apiLog.create({
             data: {
                 method: req.method,
                 path: req.originalUrl,
