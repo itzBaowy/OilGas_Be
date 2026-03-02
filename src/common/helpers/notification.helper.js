@@ -121,3 +121,24 @@ export const notifySystemMessage = async (recipientIds, title, message) => {
         console.error('Error sending system notification:', error);
     }
 };
+
+export const notifyWarehouseCapacityExceeded = async (userId, warehouse, requested, available) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Warehouse Capacity Exceeded',
+                message: `Cannot receive inventory into "${warehouse.name}" (${warehouse.warehouseId}). ` +
+                         `Requested: ${requested} units, Available space: ${available} units. ` +
+                         `Capacity: ${warehouse.capacity}.`,
+                type: 'ERROR',
+                category: 'INVENTORY',
+                relatedId: warehouse.id,
+                link: `/warehouse`,
+            },
+            user: { id: userId },
+        });
+    } catch (error) {
+        console.error('Error sending warehouse capacity exceeded notification:', error);
+    }
+};
