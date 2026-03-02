@@ -1,5 +1,5 @@
 import prisma from "../prisma/connect.prisma.js";
-import { NotFoundException } from "../common/helpers/exception.helper.js";
+import { NotFoundException, BadRequestException } from "../common/helpers/exception.helper.js";
 import {
   getInstrumentTypes,
   getInstrumentStatuses,
@@ -512,8 +512,6 @@ export const instrumentService = {
       }
     }
 
-    console.log('Final where clause:', JSON.stringify(where, null, 2));
-
     // Get maintenance history with instrument details
     const maintenanceHistoryPromise = prisma.instrumentMaintenanceHistory.findMany({
       where: where,
@@ -629,25 +627,6 @@ export const instrumentService = {
     ];
 
     return maintenanceTypes;
-  },
-  async getMaintenanceTypes() {
-    // Get distinct maintenance types using Prisma's distinct feature
-    const maintenanceHistory = await prisma.maintenanceHistory.findMany({
-      distinct: ['type'],
-      select: {
-        type: true
-      }
-    });
-
-    // Convert to uppercase, filter null/empty strings, remove duplicates, and sort
-    const uniqueTypes = [...new Set(
-      maintenanceHistory
-        .map(mh => mh.type)
-        .filter(type => type && type.trim() !== '')
-        .map(type => type.toUpperCase())
-    )].sort();
-
-    return uniqueTypes;
   },
 
   /**

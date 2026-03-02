@@ -245,7 +245,7 @@ incidentRouter.get("/:id", protect, incidentController.getIncidentById);
 incidentRouter.post(
     "/",
     protect,
-    checkRole(["Engineer", "Field Supervisor", "Administrator"]),
+    checkRole(["Engineer", "Supervisor", "Admin"]),
     incidentController.createIncident
 );
 
@@ -320,7 +320,7 @@ incidentRouter.post(
 incidentRouter.post(
     "/:id/respond",
     protect,
-    checkRole(["Field Supervisor"]),
+    checkRole(["Supervisor"]),
     incidentController.respondToIncident
 );
 

@@ -550,7 +550,11 @@ async function main() {
     for (let j = startIdx; j < endIdx; j++) {
       await prisma.equipment.update({
         where: { id: allEquipments[j].id },
-        data: { instrumentId: instrument.id },
+        data: { 
+          instrument: {
+            connect: { id: instrument.id }
+          }
+        },
       });
       // Update local reference
       allEquipments[j].instrumentId = instrument.id;
