@@ -231,6 +231,34 @@ model Notification {
   @@map("Notification")
 }
 
+model Incident {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  incidentId          String?   @unique  // INC-001, INC-002, ...
+  instrumentId        String
+  instrumentName      String
+  type                String    // PRESSURE_ANOMALY, TEMPERATURE_ANOMALY, LEAKAGE, EQUIPMENT_FAILURE, SENSOR_MALFUNCTION
+  severity            String    // WARNING, CRITICAL, FATAL
+  status              String    @default("OPEN") // OPEN, ACKNOWLEDGED, IN_PROGRESS, RESOLVED
+  description         String
+  currentReading      Float?
+  threshold           Float?
+  actionTaken         String?
+
+  createdById         String?   @db.ObjectId
+  createdByName       String?
+  acknowledgedAt      DateTime?
+  acknowledgedById    String?   @db.ObjectId
+  acknowledgedByName  String?
+  resolvedAt          DateTime?
+  resolvedById        String?   @db.ObjectId
+  resolvedByName      String?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@map("Incidents")
+}
+
 model SystemConfig {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   key         String   @unique
