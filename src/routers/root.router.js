@@ -10,6 +10,7 @@ import instrumentRouter from './instrument.router.js';
 import { inventoryRouter } from './inventory.router.js';
 import notificationRouter from './notification.router.js';
 import systemConfigRouter from './systemConfig.router.js';
+import incidentRouter from './incident.router.js';
 
 const rootRouter = express.Router()
 
@@ -24,6 +25,7 @@ rootRouter.use("/instruments", instrumentRouter)
 rootRouter.use("/inventory", inventoryRouter)
 rootRouter.use("/notifications", notificationRouter)
 rootRouter.use("/system-config", systemConfigRouter)
+rootRouter.use("/incidents", incidentRouter)
 
 
 export default rootRouter
