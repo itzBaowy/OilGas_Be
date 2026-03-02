@@ -244,6 +244,154 @@ instrumentRouter.get(
   instrumentController.getLocations
 );
 
+// ==================== MAINTENANCE HISTORY ROUTES ====================
+
+/**
+ * @swagger
+ * /api/instruments/maintenance-history/types:
+ *   get:
+ *     summary: Lấy danh sách loại bảo trì instrument (Get instrument maintenance types)
+ *     description: Get distinct maintenance types for instruments (Preventive, Corrective, Calibration, Inspection, Replacement)
+ *     tags: [Instruments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Instrument maintenance types retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Instrument maintenance types retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["PREVENTIVE", "CORRECTIVE", "CALIBRATION", "INSPECTION", "REPLACEMENT"]
+ */
+instrumentRouter.get(
+  "/maintenance-history/types",
+  protect,
+  checkPermission(["VIEW_INSTRUMENT", "ALL"]),
+  instrumentController.getInstrumentMaintenanceTypes
+);
+
+/**
+ * @swagger
+ * /api/instruments/maintenance-history:
+ *   get:
+ *     summary: Lấy tất cả lịch sử bảo trì instrument (Get all instrument maintenance history)
+ *     description: Get maintenance history of all instruments with pagination and filters
+ *     tags: [Instruments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: filters
+ *         schema:
+ *           type: string
+ *         description: JSON string of filters (e.g. {"type":"Preventive","status":"Completed","instrumentId":"objectId"})
+ *         example: {"type":"Preventive","status":"Completed"}
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date filter (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date filter (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: All instrument maintenance history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: All instrument maintenance history retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalItem:
+ *                       type: integer
+ *                     totalPage:
+ *                       type: integer
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           instrumentId:
+ *                             type: string
+ *                           date:
+ *                             type: string
+ *                             format: date-time
+ *                           type:
+ *                             type: string
+ *                           description:
+ *                             type: string
+ *                           performedBy:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           cost:
+ *                             type: number
+ *                           instrument:
+ *                             type: object
+ *                             properties:
+ *                               instrumentId:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                               type:
+ *                                 type: string
+ *                               model:
+ *                                 type: string
+ *                               location:
+ *                                 type: string
+ */
+instrumentRouter.get(
+  "/maintenance-history",
+  protect,
+  checkPermission(["VIEW_INSTRUMENT", "ALL"]),
+  instrumentController.getAllInstrumentMaintenanceHistory
+);
+
 // ==================== LIST AND CREATE ROUTES ====================
 
 /**
@@ -623,6 +771,87 @@ instrumentRouter.delete(
   protect,
   checkPermission(["ASSIGN_ENGINEER_INSTRUMENT", "ALL"]),
   instrumentController.removeEngineerAssignment
+);
+
+/**
+ * @swagger
+ * /api/instruments/{instrumentId}/maintenance-history:
+ *   get:
+ *     summary: Lấy lịch sử bảo trì của một instrument (Get maintenance history for an instrument)
+ *     description: Get maintenance history for a specific instrument by its instrumentId (INS-001, INS-002, etc.)
+ *     tags: [Instruments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: instrumentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Instrument ID (INS-001, INS-002, etc.)
+ *         example: INS-001
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date filter (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date filter (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Instrument maintenance history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 statusCode:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Instrument maintenance history retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       instrumentId:
+ *                         type: string
+ *                       date:
+ *                         type: string
+ *                         format: date-time
+ *                       type:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       performedBy:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       cost:
+ *                         type: number
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *       404:
+ *         description: Instrument not found
+ */
+instrumentRouter.get(
+  "/:instrumentId/maintenance-history",
+  protect,
+  checkPermission(["VIEW_INSTRUMENT", "ALL"]),
+  instrumentController.getInstrumentMaintenanceHistory
 );
 
 export default instrumentRouter;

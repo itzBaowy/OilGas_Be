@@ -26,7 +26,12 @@ export const warehouseService = {
             where: where,
             skip: index,
             take: pageSize,
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
+            include: {
+                inventories: {
+                    select: { quantity: true }
+                }
+            }
         });
 
         const totalItemPromise = prisma.warehouse.count({
@@ -35,26 +40,45 @@ export const warehouseService = {
 
         const [resultPrisma, totalItem] = await Promise.all([resultPrismaPromise, totalItemPromise]);
 
+        const items = resultPrisma.map(({ inventories, ...warehouse }) => {
+            const totalQuantity = inventories.reduce((sum, inv) => sum + inv.quantity, 0);
+            const usagePercentage = warehouse.capacity > 0
+                ? parseFloat(((totalQuantity / warehouse.capacity) * 100).toFixed(2))
+                : 0;
+            return { ...warehouse, totalQuantity, usagePercentage };
+        });
+
         return {
             page: page,
             pageSize: pageSize,
             totalItem: totalItem,
             totalPage: Math.ceil(totalItem / pageSize),
-            items: resultPrisma,
+            items,
         };
     },
 
     // Lấy warehouse theo ID
     async getWarehouseById(warehouseId) {
         const warehouse = await prisma.warehouse.findUnique({
-            where: { id: warehouseId }
+            where: { id: warehouseId },
+            include: {
+                inventories: {
+                    select: { quantity: true }
+                }
+            }
         });
 
         if (!warehouse) {
             throw new NotFoundException("Warehouse không tồn tại");
         }
 
-        return warehouse;
+        const { inventories, ...warehouseData } = warehouse;
+        const totalQuantity = inventories.reduce((sum, inv) => sum + inv.quantity, 0);
+        const usagePercentage = warehouseData.capacity > 0
+            ? parseFloat(((totalQuantity / warehouseData.capacity) * 100).toFixed(2))
+            : 0;
+
+        return { ...warehouseData, totalQuantity, usagePercentage };
     },
 
     // Tạo warehouse mới

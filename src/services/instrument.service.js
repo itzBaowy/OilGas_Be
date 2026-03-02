@@ -6,6 +6,7 @@ import {
   validateInstrumentData,
   validateInstrumentUpdateData,
 } from "../common/helpers/validate.helper.js";
+import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 
 export const instrumentService = {
 
@@ -246,7 +247,7 @@ export const instrumentService = {
     }
 
     // Validate update data using helper
-    const { parsedInstallDate, parsedLastMaintenanceDate, parsedNextMaintenanceDate } = 
+    const { parsedInstallDate, parsedLastMaintenanceDate, parsedNextMaintenanceDate } =
       validateInstrumentUpdateData(req.body);
 
     // Build update data
@@ -461,4 +462,179 @@ export const instrumentService = {
 
     return { message: "Engineer assignment removed successfully" };
   },
+
+  /**
+   * Get all instrument maintenance history with filters and pagination
+   * Similar to equipment maintenance history
+   */
+  async getAllInstrumentMaintenanceHistory(req) {
+    const { page, pageSize, where, index } = buildQueryPrisma(req.query);
+
+    // Override filters for exact match (type, status)
+    // buildQueryPrisma converts strings to contains, but we need exact match for these fields
+    if (where.type && typeof where.type === "object" && where.type.contains) {
+      where.type = where.type.contains;
+    }
+    if (where.status && typeof where.status === "object" && where.status.contains) {
+      where.status = where.status.contains;
+    }
+
+    // Special handling for instrumentId filter
+    // instrumentId in filters is custom ID (INS-001), not ObjectId
+    // Need to filter through instrument relation
+    if (where.instrumentId) {
+      const customInstrumentId = typeof where.instrumentId === "object" && where.instrumentId.contains
+        ? where.instrumentId.contains
+        : where.instrumentId;
+      
+      // Use nested where for instrument relation
+      where.instrument = where.instrument || {};
+      where.instrument.instrumentId = customInstrumentId;
+      delete where.instrumentId; // Remove direct instrumentId filter
+    }
+
+    // Add date range filter if provided
+    if (req.query.startDate || req.query.endDate) {
+      where.date = {};
+
+      if (req.query.startDate) {
+        where.date.gte = new Date(req.query.startDate);
+      }
+
+      if (req.query.endDate) {
+        where.date.lte = new Date(req.query.endDate);
+      }
+    }
+
+    console.log('Final where clause:', JSON.stringify(where, null, 2));
+
+    // Get maintenance history with instrument details
+    const maintenanceHistoryPromise = prisma.instrumentMaintenanceHistory.findMany({
+      where: where,
+      skip: index,
+      take: pageSize,
+      orderBy: { date: "desc" },
+      select: {
+        id: true,
+        date: true,
+        type: true,
+        description: true,
+        performedBy: true,
+        status: true,
+        cost: true,
+        createdAt: true,
+        updatedAt: true,
+        instrument: {
+          select: {
+            instrumentId: true,
+            name: true,
+            type: true,
+            model: true,
+            location: true,
+          },
+        },
+      },
+    });
+
+    const totalItemPromise = prisma.instrumentMaintenanceHistory.count({
+      where: where,
+    });
+
+    const [maintenanceHistory, totalItem] = await Promise.all([
+      maintenanceHistoryPromise,
+      totalItemPromise,
+    ]);
+
+    // Map to include instrumentId at top level (custom ID, not ObjectId)
+    const items = maintenanceHistory.map(item => ({
+      ...item,
+      instrumentId: item.instrument.instrumentId, // Use custom ID (INS-001) instead of ObjectId
+    }));
+
+    return {
+      page: page,
+      pageSize: pageSize,
+      totalItem: totalItem,
+      totalPage: Math.ceil(totalItem / pageSize),
+      items: items,
+    };
+  },
+
+  /**
+   * Get maintenance history for a specific instrument
+   */
+  async getInstrumentMaintenanceHistory(instrumentId, queryParams = {}) {
+    // First, get the instrument by instrumentId (INS-001, INS-002, etc.) to get the ObjectId
+    const instrument = await prisma.instrument.findUnique({
+      where: { instrumentId },
+    });
+
+    if (!instrument || instrument.isDeleted) {
+      throw new NotFoundException("Instrument not found");
+    }
+
+    // Build where clause with optional date range
+    const whereClause = {
+      instrumentId: instrument.id, // Use ObjectId here
+    };
+
+    // Add date range filter if provided
+    if (queryParams.startDate || queryParams.endDate) {
+      whereClause.date = {};
+
+      if (queryParams.startDate) {
+        whereClause.date.gte = new Date(queryParams.startDate);
+      }
+
+      if (queryParams.endDate) {
+        whereClause.date.lte = new Date(queryParams.endDate);
+      }
+    }
+
+    // Get maintenance history sorted by date descending (newest first)
+    const maintenanceHistory = await prisma.instrumentMaintenanceHistory.findMany({
+      where: whereClause,
+      orderBy: {
+        date: "desc",
+      },
+    });
+
+    // Return empty array with appropriate message if no records found
+    return maintenanceHistory;
+  },
+
+  /**
+   * Get distinct maintenance types for instruments
+   */
+  async getInstrumentMaintenanceTypes() {
+    // Return predefined maintenance types
+    const maintenanceTypes = [
+      "CALIBRATION",
+      "CORRECTION",
+      "INACTIVE",
+      "MAINTENANCE",
+      "REPLACEMENT"
+    ];
+
+    return maintenanceTypes;
+  },
+  async getMaintenanceTypes() {
+    // Get distinct maintenance types using Prisma's distinct feature
+    const maintenanceHistory = await prisma.maintenanceHistory.findMany({
+      distinct: ['type'],
+      select: {
+        type: true
+      }
+    });
+
+    // Convert to uppercase, filter null/empty strings, remove duplicates, and sort
+    const uniqueTypes = [...new Set(
+      maintenanceHistory
+        .map(mh => mh.type)
+        .filter(type => type && type.trim() !== '')
+        .map(type => type.toUpperCase())
+    )].sort();
+
+    return uniqueTypes;
+  }
 };

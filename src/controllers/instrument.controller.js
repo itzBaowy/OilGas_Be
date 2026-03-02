@@ -91,4 +91,31 @@ export const instrumentController = {
     const response = responseSuccess(result, "Engineer assignment removed successfully");
     res.status(response.statusCode).json(response);
   },
+
+  /**
+   * Get all instrument maintenance history with filters and pagination
+   */
+  async getAllInstrumentMaintenanceHistory(req, res, next) {
+    const result = await instrumentService.getAllInstrumentMaintenanceHistory(req);
+    const response = responseSuccess(result, "All instrument maintenance history retrieved successfully");
+    res.status(response.statusCode).json(response);
+  },
+
+  /**
+   * Get maintenance history for a specific instrument
+   */
+  async getInstrumentMaintenanceHistory(req, res, next) {
+    const result = await instrumentService.getInstrumentMaintenanceHistory(req.params.instrumentId, req.query);
+    const response = responseSuccess(result, "Instrument maintenance history retrieved successfully");
+    res.status(response.statusCode).json(response);
+  },
+
+  /**
+   * Get instrument maintenance types
+   */
+  async getInstrumentMaintenanceTypes(req, res, next) {
+    const result = await instrumentService.getInstrumentMaintenanceTypes();
+    const response = responseSuccess(result, "Instrument maintenance types retrieved successfully");
+    res.status(response.statusCode).json(response);
+  },
 };
