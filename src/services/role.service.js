@@ -69,11 +69,17 @@ export const roleService = {
             throw new BadRequestException("Permissions must be an array");
         }
 
+        // Đảm bảo luôn có quyền VIEW_DASHBOARD mặc định
+        const defaultPermissions = permissions || [];
+        if (!defaultPermissions.includes('VIEW_DASHBOARD')) {
+            defaultPermissions.push('VIEW_DASHBOARD');
+        }
+
         const role = await prisma.role.create({
             data: {
                 name,
                 description,
-                permissions: permissions || []
+                permissions: defaultPermissions
             }
         });
 
