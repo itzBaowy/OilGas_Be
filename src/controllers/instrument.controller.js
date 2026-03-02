@@ -118,4 +118,22 @@ export const instrumentController = {
     const response = responseSuccess(result, "Instrument maintenance types retrieved successfully");
     res.status(response.statusCode).json(response);
   },
+
+  /**
+   * Get instrument maintenance statuses
+   */
+  async getInstrumentMaintenanceStatuses(req, res, next) {
+    const result = await instrumentService.getInstrumentMaintenanceStatuses();
+    const response = responseSuccess(result, "Instrument maintenance statuses retrieved successfully");
+    res.status(response.statusCode).json(response);
+  },
+
+  /**
+   * Get maintenance records grouped by instrument (for Accordion view)
+   */
+  async getMaintenanceGrouped(req, res, next) {
+    const result = await instrumentService.getMaintenanceGrouped(req.query);
+    const response = responseSuccess(result, "Maintenance records grouped by instrument retrieved successfully");
+    res.status(response.statusCode).json(response);
+  },
 };

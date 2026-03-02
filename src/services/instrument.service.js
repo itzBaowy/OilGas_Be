@@ -498,11 +498,17 @@ export const instrumentService = {
       where.date = {};
 
       if (req.query.startDate) {
-        where.date.gte = new Date(req.query.startDate);
+        // Set to start of day (00:00:00.000)
+        const startDate = new Date(req.query.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        where.date.gte = startDate;
       }
 
       if (req.query.endDate) {
-        where.date.lte = new Date(req.query.endDate);
+        // Set to end of day (23:59:59.999)
+        const endDate = new Date(req.query.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        where.date.lte = endDate;
       }
     }
 
@@ -583,11 +589,17 @@ export const instrumentService = {
       whereClause.date = {};
 
       if (queryParams.startDate) {
-        whereClause.date.gte = new Date(queryParams.startDate);
+        // Set to start of day (00:00:00.000)
+        const startDate = new Date(queryParams.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        whereClause.date.gte = startDate;
       }
 
       if (queryParams.endDate) {
-        whereClause.date.lte = new Date(queryParams.endDate);
+        // Set to end of day (23:59:59.999)
+        const endDate = new Date(queryParams.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        whereClause.date.lte = endDate;
       }
     }
 
@@ -607,13 +619,13 @@ export const instrumentService = {
    * Get distinct maintenance types for instruments
    */
   async getInstrumentMaintenanceTypes() {
-    // Return predefined maintenance types
+    // Return predefined maintenance types (matching seed data)
     const maintenanceTypes = [
-      "CALIBRATION",
-      "CORRECTION",
-      "INACTIVE",
-      "MAINTENANCE",
-      "REPLACEMENT"
+      "Preventive",
+      "Corrective",
+      "Calibration",
+      "Inspection",
+      "Replacement"
     ];
 
     return maintenanceTypes;
@@ -636,5 +648,155 @@ export const instrumentService = {
     )].sort();
 
     return uniqueTypes;
+  },
+
+  /**
+   * Get distinct maintenance statuses for instruments
+   */
+  async getInstrumentMaintenanceStatuses() {
+    const maintenanceStatuses = [
+      "Completed",
+      "In Progress",
+      "Scheduled",
+      "Cancelled"
+    ];
+    return maintenanceStatuses;
+  },
+
+  /**
+   * Get maintenance records GROUPED by Instrument (for Accordion view)
+   * Returns groups with instrument info, summary stats, and nested records
+   * @param {Object} queryParams - { type, status, startDate, endDate, search }
+   */
+  async getMaintenanceGrouped(queryParams = {}) {
+    const { type, status, startDate, endDate, search } = queryParams;
+
+    // Build where clause for maintenance records
+    const where = {};
+
+    if (type) {
+      where.type = { equals: type, mode: "insensitive" };
+    }
+
+    if (status) {
+      where.status = { equals: status, mode: "insensitive" };
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      where.date = {};
+      if (startDate) {
+        // Set to start of day (00:00:00.000)
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.date.gte = start;
+      }
+      if (endDate) {
+        // Set to end of day (23:59:59.999)
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.date.lte = end;
+      }
+    }
+
+    // Search in description, performedBy
+    if (search) {
+      where.OR = [
+        { description: { contains: search, mode: "insensitive" } },
+        { performedBy: { contains: search, mode: "insensitive" } },
+        { instrument: { name: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    // Get all maintenance records with instrument info
+    const maintenanceRecords = await prisma.instrumentMaintenanceHistory.findMany({
+      where,
+      orderBy: { date: "desc" },
+      include: {
+        instrument: {
+          select: {
+            id: true,
+            instrumentId: true,
+            name: true,
+            type: true,
+            location: true,
+            status: true,
+          },
+        },
+        equipment: {
+          select: {
+            id: true,
+            equipmentId: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    // Group records by instrument
+    const groupsMap = new Map();
+
+    for (const record of maintenanceRecords) {
+      const instrumentId = record.instrument?.id;
+      if (!instrumentId) continue;
+
+      if (!groupsMap.has(instrumentId)) {
+        groupsMap.set(instrumentId, {
+          instrument: {
+            id: record.instrument.instrumentId, // Use custom ID (INS-001)
+            name: record.instrument.name,
+            type: record.instrument.type,
+            location: record.instrument.location,
+            status: record.instrument.status,
+          },
+          records: [],
+          statusSummary: {},
+          totalRecords: 0,
+          totalCost: 0,
+        });
+      }
+
+      const group = groupsMap.get(instrumentId);
+      
+      // Add record to group
+      group.records.push({
+        id: record.id,
+        date: record.date,
+        type: record.type,
+        description: record.description,
+        performedBy: record.performedBy,
+        status: record.status,
+        cost: record.cost,
+        equipment: record.equipment ? {
+          id: record.equipment.equipmentId,
+          name: record.equipment.name,
+          type: record.equipment.type,
+        } : null,
+      });
+
+      // Update summary stats
+      group.totalRecords += 1;
+      group.totalCost += record.cost || 0;
+
+      // Update status summary
+      const recordStatus = record.status || "Unknown";
+      group.statusSummary[recordStatus] = (group.statusSummary[recordStatus] || 0) + 1;
+    }
+
+    // Convert map to array
+    const groups = Array.from(groupsMap.values());
+
+    // Calculate totals
+    const totalGroups = groups.length;
+    const totalRecords = maintenanceRecords.length;
+    const totalCost = groups.reduce((sum, g) => sum + g.totalCost, 0);
+
+    return {
+      groups,
+      totalGroups,
+      totalRecords,
+      totalCost,
+    };
   }
 };
