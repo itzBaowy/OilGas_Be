@@ -13,6 +13,13 @@ export const userService = {
         // console.log("service findAll", req.payload);
         const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
+        // Handle role filter by name (for Assign Engineer feature)
+        if (req.query.role) {
+            where.role = {
+                name: req.query.role
+            };
+        }
+
         // prisma
         const resultPrismaPromise = prisma.user.findMany({
             where: where,
