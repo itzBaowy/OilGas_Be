@@ -8,6 +8,14 @@ import {
 } from "../common/helpers/validate.helper.js";
 import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 
+// Helper function to build where clause based on ID type (ObjectId vs custom instrumentId)
+const buildIdWhereClause = (id) => {
+  const isObjectId = /^[a-fA-F0-9]{24}$/.test(id);
+  return isObjectId
+    ? { id: id, isDeleted: false }
+    : { instrumentId: id, isDeleted: false };
+};
+
 export const instrumentService = {
 
   async generateCustomId() {
@@ -139,12 +147,8 @@ export const instrumentService = {
   },
 
   async getInstrumentById(id) {
-
     const instrument = await prisma.instrument.findFirst({
-      where: {
-        instrumentId: id,
-        isDeleted: false,
-      },
+      where: buildIdWhereClause(id),
       include: {
         assignedEngineers: {
           select: {
@@ -236,10 +240,7 @@ export const instrumentService = {
 
     // Check if instrument exists
     const existingInstrument = await prisma.instrument.findFirst({
-      where: {
-        instrumentId: id,
-        isDeleted: false,
-      },
+      where: buildIdWhereClause(id),
     });
 
     if (!existingInstrument) {
@@ -305,10 +306,7 @@ export const instrumentService = {
 
     // Check if instrument exists
     const existingInstrument = await prisma.instrument.findFirst({
-      where: {
-        instrumentId: id,
-        isDeleted: false,
-      },
+      where: buildIdWhereClause(id),
     });
 
     if (!existingInstrument) {
@@ -359,10 +357,7 @@ export const instrumentService = {
 
     // Check if instrument exists
     const instrument = await prisma.instrument.findFirst({
-      where: {
-        instrumentId: id,
-        isDeleted: false,
-      },
+      where: buildIdWhereClause(id),
     });
 
     if (!instrument) {
@@ -426,10 +421,7 @@ export const instrumentService = {
 
     // Check if instrument exists
     const instrument = await prisma.instrument.findFirst({
-      where: {
-        instrumentId: id,
-        isDeleted: false,
-      },
+      where: buildIdWhereClause(id),
     });
 
     if (!instrument) {
