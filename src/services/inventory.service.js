@@ -7,18 +7,38 @@ export const inventoryService = {
     
     // Generate custom inventory ID (INV-001, INV-002, etc.)
     async generateInventoryId() {
-        try {
-            const updatedSequence = await prisma.sequence.upsert({
-                where: { name: "inventory" },
-                update: { value: { increment: 1 } },
-                create: { name: "inventory", value: 1 }
-            });
+        const maxRetries = 10;
+        
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const updatedSequence = await prisma.sequence.upsert({
+                    where: { name: "inventory" },
+                    update: { value: { increment: 1 } },
+                    create: { name: "inventory", value: 1 }
+                });
 
-            const nextValue = updatedSequence.value;
-            return `INV-${String(nextValue).padStart(3, '0')}`;
-        } catch (error) {
-            throw new Error(`Failed to generate custom inventory ID: ${error.message}`);
+                const nextValue = updatedSequence.value;
+                const inventoryId = `INV-${String(nextValue).padStart(3, '0')}`;
+                
+                // Check if this ID already exists
+                const existing = await prisma.inventory.findUnique({
+                    where: { inventoryId }
+                });
+                
+                if (!existing) {
+                    return inventoryId;
+                }
+                
+                // If exists, retry with next value
+                console.warn(`InventoryId ${inventoryId} already exists, retrying...`);
+            } catch (error) {
+                if (i === maxRetries - 1) {
+                    throw new Error(`Failed to generate unique inventory ID after ${maxRetries} attempts: ${error.message}`);
+                }
+            }
         }
+        
+        throw new Error(`Failed to generate unique inventory ID after ${maxRetries} attempts`);
     },
 
     // Helper function to find warehouse by custom ID or ObjectId
@@ -246,6 +266,12 @@ export const inventoryService = {
             }
         });
 
+        // Update equipment quantity (increment)
+        await prisma.equipment.update({
+            where: { id: equipment.id },
+            data: { quantity: { increment: quantity } }
+        });
+
         // Gửi thông báo thành công
         await notifyInventoryReceived(userId, warehouse, equipment, quantity, newQuantity);
 
@@ -336,6 +362,12 @@ export const inventoryService = {
                 notes: notes || null,
                 dateDispatched: new Date(date_dispatched)
             }
+        });
+
+        // Update equipment quantity (decrement)
+        await prisma.equipment.update({
+            where: { id: equipment.id },
+            data: { quantity: { decrement: quantity } }
         });
 
         // Trigger low stock alert if needed

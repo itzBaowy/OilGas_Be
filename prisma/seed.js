@@ -284,6 +284,7 @@ async function main() {
       manufacturer,
       installDate: new Date(2020 + (i % 5), (i % 12), (i % 28) + 1),
       description: `${type} được lắp đặt tại ${location}`,
+      quantity: 50 + (i * 10), // Initial quantity for each equipment
       isDeleted: false,
       specifications: {
         capacity: `${(i * 100)}L`,
@@ -636,6 +637,13 @@ async function main() {
     });
     console.log(`✅ Tạo inventory: ${inventory.inventoryId}`);
   }
+
+  // Update sequence to match the last inventory counter
+  await prisma.sequence.upsert({
+    where: { name: 'inventory' },
+    update: { value: inventoryCounter - 1 },
+    create: { name: 'inventory', value: inventoryCounter - 1 }
+  });
 
   console.log('✅ Seed Inventory thành công!');
 
