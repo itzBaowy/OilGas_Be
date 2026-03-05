@@ -484,7 +484,7 @@ equipmentRouter.get("/:id", protect, checkPermission(["VIEW_EQUIPMENT", "ALL"]),
  *       404:
  *         description: Equipment not found
  */
-equipmentRouter.put("/:id", protect, checkPermission(["UPDATE_EQUIPMENT", "ALL"]), equipmentController.updateEquipment);
+equipmentRouter.put("/:id", protect, checkPermission(["EDIT_EQUIPMENT", "ALL"]), equipmentController.updateEquipment);
 
 /**
  * @swagger

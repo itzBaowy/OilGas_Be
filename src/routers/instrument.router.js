@@ -792,7 +792,7 @@ instrumentRouter.get(
 instrumentRouter.put(
   "/:id",
   protect,
-  checkPermission(["UPDATE_INSTRUMENT", "ALL"]),
+  checkPermission(["EDIT_INSTRUMENT", "ALL"]),
   instrumentController.updateInstrument
 );
 
