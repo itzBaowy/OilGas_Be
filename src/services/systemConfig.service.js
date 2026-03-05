@@ -138,7 +138,7 @@ export const systemConfigService = {
       const notificationData = violationCount > 0
         ? {
             recipientIds,
-            title: '⚠️ Threshold Updated — Violations Detected',
+            title: 'Threshold Updated — Violations Detected',
             message: `Threshold settings changed by ${adminUser?.fullName || 'Admin'}. WARNING: ${violationCount} active incident(s) now exceed the new threshold limits (Pressure: ${pressureLimit} psi, Temp: ${tempLimit}°C).`,
             type: 'WARNING',
             category: 'SYSTEM',
@@ -147,7 +147,7 @@ export const systemConfigService = {
           }
         : {
             recipientIds,
-            title: '✅ Threshold Updated Successfully',
+            title: 'Threshold Updated Successfully',
             message: `Threshold settings changed by ${adminUser?.fullName || 'Admin'}. All active incidents are within safe limits (Pressure: ${pressureLimit} psi, Temp: ${tempLimit}°C).`,
             type: 'INFO',
             category: 'SYSTEM',
