@@ -252,17 +252,25 @@ const INSTRUMENT_TYPES = [
 const INSTRUMENT_STATUSES = ["Active", "Inactive", "Maintenance", "Decommissioned"];
 
 /**
- * Get instrument types array
+ * Get instrument types array with id, value, label format for dropdown
  */
 export function getInstrumentTypes() {
-  return INSTRUMENT_TYPES;
+  return INSTRUMENT_TYPES.map((type, index) => ({
+    id: `type-${index + 1}`,
+    value: type,
+    label: type,
+  }));
 }
 
 /**
- * Get instrument statuses array
+ * Get instrument statuses array with id, value, label format for dropdown
  */
 export function getInstrumentStatuses() {
-  return INSTRUMENT_STATUSES;
+  return INSTRUMENT_STATUSES.map((status, index) => ({
+    id: `status-${index + 1}`,
+    value: status,
+    label: status,
+  }));
 }
 
 /**
