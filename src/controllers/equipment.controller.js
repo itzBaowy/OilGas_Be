@@ -51,5 +51,15 @@ export const equipmentController = {
         const result = await equipmentService.getMaintenanceTypes();
         const response = responseSuccess(result, "Maintenance types retrieved successfully");
         res.status(response.statusCode).json(response);
+    },
+    async scheduleMaintenance(req, res, next) {
+        const result = await equipmentService.createMaintenanceSchedule(req);
+        const response = responseSuccess(result, "Maintenance scheduled successfully", 201);
+        res.status(response.statusCode).json(response);
+    },
+    async updateMaintenanceStatus(req, res, next) {
+        const result = await equipmentService.updateMaintenanceStatus(req);
+        const response = responseSuccess(result, "Maintenance status updated successfully");
+        res.status(response.statusCode).json(response);
     }
 };

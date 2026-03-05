@@ -410,6 +410,125 @@ equipmentRouter.get("/maintenance-history", protect, checkPermission(["VIEW_EQUI
 
 /**
  * @swagger
+ * /api/equipments/{equipmentId}/maintenance:
+ *   post:
+ *     summary: Lên lịch bảo trì thiết bị (Schedule equipment maintenance)
+ *     description: Create a scheduled maintenance record for an equipment. Validates engineer role and future date.
+ *     tags: [Equipment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: equipmentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Equipment custom ID (e.g., EQ-001)
+ *         example: EQ-001
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - engineerId
+ *               - type
+ *               - date
+ *             properties:
+ *               engineerId:
+ *                 type: string
+ *                 description: User ObjectId of the responsible engineer
+ *                 example: 507f1f77bcf86cd799439011
+ *               type:
+ *                 type: string
+ *                 enum: [Preventive, Corrective, Calibration, Inspection, Replacement]
+ *                 description: Maintenance type
+ *                 example: Preventive
+ *               date:
+ *                 type: string
+ *                 format: date
+ *                 description: Scheduled date (must be today or in the future)
+ *                 example: 2026-04-15
+ *               description:
+ *                 type: string
+ *                 description: Optional description of the maintenance work
+ *                 example: Quarterly pump inspection and calibration
+ *               cost:
+ *                 type: number
+ *                 description: Optional estimated cost (USD)
+ *                 example: 1200
+ *     responses:
+ *       201:
+ *         description: Maintenance scheduled successfully
+ *       400:
+ *         description: Bad request (validation error, engineer not found, invalid type, past date)
+ *       404:
+ *         description: Equipment not found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (insufficient permissions)
+ */
+equipmentRouter.post("/:equipmentId/maintenance", protect, checkPermission(["CREATE_EQUIPMENT", "ALL"]), equipmentController.scheduleMaintenance);
+
+/**
+ * @swagger
+ * /api/equipments/maintenance-history/{id}/status:
+ *   patch:
+ *     summary: Cập nhật trạng thái bảo trì (Update maintenance status)
+ *     description: |
+ *       Update the status of a maintenance record using state machine transitions.
+ *       Valid transitions:
+ *       - Scheduled → In Progress | Cancelled
+ *       - In Progress → Completed | Cancelled
+ *       Completed and Cancelled are final states and cannot be changed.
+ *     tags: [Equipment]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MaintenanceHistory ObjectId
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Scheduled, In Progress, Completed, Cancelled]
+ *                 description: New status (must follow valid transitions)
+ *                 example: In Progress
+ *               cost:
+ *                 type: number
+ *                 description: Actual cost (typically set when completing)
+ *                 example: 1500
+ *               notes:
+ *                 type: string
+ *                 description: Optional notes (appended to description)
+ *                 example: Completed ahead of schedule, replaced 2 gaskets
+ *     responses:
+ *       200:
+ *         description: Maintenance status updated successfully
+ *       400:
+ *         description: Invalid status transition or validation error
+ *       404:
+ *         description: Maintenance record not found
+ *       401:
+ *         description: Unauthorized
+ */
+equipmentRouter.patch("/maintenance-history/:id/status", protect, checkPermission(["VIEW_EQUIPMENT", "UPDATE_EQUIPMENT", "CREATE_EQUIPMENT", "ALL"]), equipmentController.updateMaintenanceStatus);
+
+/**
+ * @swagger
  * /api/equipments/{id}:
  *   get:
  *     summary: Lấy chi tiết thiết bị (Get equipment by ID)
