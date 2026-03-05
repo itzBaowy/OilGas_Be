@@ -3,342 +3,326 @@ import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
 import cloudinary from "../common/cloudinary/init.cloudinary.js";
 import { BadRequestException } from "../common/helpers/exception.helper.js";
 import bcrypt from "bcryptjs";
-import {
-  validatePassword,
-  validateEmail,
-} from "../common/helpers/validate.helper.js";
-import {
-  notifyUserCreated,
-  notifyUserUpdated,
-  notifyUserDeleted,
-} from "../common/helpers/notification.helper.js";
+import { validatePassword, validateEmail } from "../common/helpers/validate.helper.js";
+import { notifyUserCreated, notifyUserUpdated, notifyUserDeleted } from "../common/helpers/notification.helper.js";
 import { logUserCreate } from "../common/helpers/audit.helper.js";
 
 const FOLDER_IMAGE = "public/images";
 export const userService = {
-  async getAllUsers(req) {
-    // console.log("service findAll", req.payload);
-    const { page, pageSize, where, index } = buildQueryPrisma(req.query);
+    async getAllUsers(req) {
+        // console.log("service findAll", req.payload);
+        const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
-    // Handle role filter by name (for Assign Engineer feature)
-    if (req.query.role) {
-      where.role = {
-        name: req.query.role,
-      };
-    }
+        // Handle role filter by name (for Assign Engineer feature)
+        if (req.query.role) {
+            where.role = {
+                name: req.query.role
+            };
+        }
 
-    // prisma
-    const resultPrismaPromise = prisma.user.findMany({
-      where: where,
-      skip: index, // skip tới vị trí index nào (OFFSET)
-      take: pageSize, // take lấy bao nhiêu phần tử (LIMIT)
-      include: {
-        role: true, // Include role data
-      },
-    });
-
-    const totalItemPromise = prisma.user.count({
-      where: where,
-    });
-
-    const [resultPrisma, totalItem] = await Promise.all([
-      resultPrismaPromise,
-      totalItemPromise,
-    ]);
-
-    // sequelize
-    // const resultSequelize = await Article.findAll();
-
-    return {
-      page: page,
-      pageSize: pageSize,
-      totalItem: totalItem,
-      totalPage: Math.ceil(totalItem / pageSize),
-      items: resultPrisma,
-    };
-  },
-  async avatarCloud(req) {
-    // NEXT_PUBLIC_BASE_DOMAIN_CLOUDINARY=https://res.cloudinary.com/***********/image/upload/
-
-    // req.file is the `avatar` file
-    // req.body will hold the text fields, if there were any
-    if (!req.file) {
-      throw new BadRequestException("Không có file");
-    }
-
-    const uploadResult = await new Promise((resolve, reject) => {
-      cloudinary.uploader
-        .upload_stream(
-          {
-            folder: FOLDER_IMAGE,
-          },
-          (error, uploadResult) => {
-            if (error) {
-              return reject(error);
+        // prisma
+        const resultPrismaPromise = prisma.user.findMany({
+            where: where,
+            skip: index, // skip tới vị trí index nào (OFFSET)
+            take: pageSize, // take lấy bao nhiêu phần tử (LIMIT)
+            include: {
+                role: true  // Include role data
             }
-            return resolve(uploadResult);
-          },
-        )
-        .end(req.file.buffer);
-    });
+        });
 
-    // console.log(uploadResult);
-    await prisma.user.update({
-      where: {
-        id: req.user.id,
-      },
-      data: {
-        avatarCloudId: uploadResult.public_id,
-      },
-    });
+        const totalItemPromise = prisma.user.count({
+            where: where,
+        });
 
-    //   đảm bảo 1 user - 1 avatar
-    if (
-      req.user.avatarCloudId &&
-      req.user.avatarCloudId !== "public/images/default_avatar"
-    ) {
-      console.log("deleted old avatar");
-      cloudinary.uploader.destroy(req.user.avatarCloudId);
+        const [resultPrisma, totalItem] = await Promise.all([resultPrismaPromise, totalItemPromise]);
+
+        // sequelize
+        // const resultSequelize = await Article.findAll();
+
+        return {
+            page: page,
+            pageSize: pageSize,
+            totalItem: totalItem,
+            totalPage: Math.ceil(totalItem / pageSize),
+            items: resultPrisma,
+        };
+    },
+    async avatarCloud(req) {
+        // NEXT_PUBLIC_BASE_DOMAIN_CLOUDINARY=https://res.cloudinary.com/***********/image/upload/
+
+        // req.file is the `avatar` file
+        // req.body will hold the text fields, if there were any
+        if (!req.file) {
+            throw new BadRequestException("Không có file");
+        }
+
+        const uploadResult = await new Promise((resolve, reject) => {
+            cloudinary.uploader
+                .upload_stream(
+                    {
+                        folder: FOLDER_IMAGE,
+                    },
+                    (error, uploadResult) => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve(uploadResult);
+                    }
+                )
+                .end(req.file.buffer);
+        });
+
+        // console.log(uploadResult);
+        await prisma.user.update({
+            where: {
+                id: req.user.id,
+            },
+            data: {
+                avatarCloudId: uploadResult.public_id,
+            },
+        });
+
+        //   đảm bảo 1 user - 1 avatar
+        if (req.user.avatarCloudId && req.user.avatarCloudId !== 'public/images/default_avatar') {
+            console.log("deleted old avatar");
+            cloudinary.uploader.destroy(req.user.avatarCloudId);
+        }
+
+        return true;
+    },
+
+    async createUsers(req) {
+        const { fullName, email, password, phoneNumber, roleName } = req.body;
+
+        // Validate email
+        validateEmail(email);
+        // Validate password
+        validatePassword(password);
+
+        // check email exists
+        const userExist = await prisma.user.findUnique({
+            where: { email: email }
+        });
+        if (userExist) {
+            throw new BadRequestException("Email already exists");
+        }
+
+        // check role exists
+        const role = await prisma.role.findUnique({
+            where: { name: roleName }
+        });
+        if (!role) {
+            throw new BadRequestException("Role does not exist");
+        }
+
+        // Hash Password
+        const hashedPassword = bcrypt.hashSync(password, 10);
+
+        // Create User
+        const newUser = await prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                fullName,
+                phoneNumber,
+                roleId: role.id,
+                resetPasswordToken: null,
+                resetPasswordExpires: null,
+            },
+            include: { role: true }
+        });
+
+        // Log audit
+        if (req.user) {
+            const creator = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                include: { role: true }
+            });
+            await logUserCreate(newUser, creator, req.ip);
+        }
+
+        // Send welcome notification
+        await notifyUserCreated(newUser, req.user?.id);
+
+        return newUser;
+    },
+
+    async updateUser(req) {
+        const { userId } = req.params;
+        const { fullName, phoneNumber, roleName, status } = req.body;
+
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+        if (!userExist) {
+            throw new BadRequestException("User not found");
+        }
+
+        // Build update data
+        const updateData = {};
+        if (fullName !== undefined) updateData.fullName = fullName;
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+        if (status !== undefined) {
+            if (!['ACTIVE', 'INACTIVE'].includes(status)) {
+                throw new BadRequestException("Invalid status. Must be ACTIVE or INACTIVE");
+            }
+            updateData.status = status;
+            updateData.isActive = status === 'ACTIVE';
+        }
+
+        // If roleName is provided, find and update role
+        if (roleName !== undefined) {
+            const role = await prisma.role.findUnique({
+                where: { name: roleName }
+            });
+            if (!role) {
+                throw new BadRequestException("Role does not exist");
+            }
+            updateData.roleId = role.id;
+        }
+
+        // Update user
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            include: { role: true }
+        });
+
+        // Send update notification
+        await notifyUserUpdated(userId, updateData, req.user?.id);
+
+        return updatedUser;
+    },
+
+    async deleteUser(req) {
+        const { userId } = req.params;
+
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { role: true }
+        });
+        if (!userExist) {
+            throw new BadRequestException("User not found");
+        }
+
+        // Không cho phép xóa chính mình
+        if (userId === req.user.id) {
+            throw new BadRequestException("Cannot delete yourself");
+        }
+
+        // Không cho phép xóa Admin
+        if (userExist.role.name === 'Admin') {
+            throw new BadRequestException("Cannot delete Admin user");
+        }
+
+        // Send deletion notification before deleting
+        await notifyUserDeleted(userId, req.user?.id);
+
+        // Delete user's avatar from cloudinary if exists
+        if (userExist.avatarCloudId && userExist.avatarCloudId !== 'public/images/default_avatar') {
+            await cloudinary.uploader.destroy(userExist.avatarCloudId);
+        }
+
+        // Delete user
+        await prisma.user.delete({
+            where: { id: userId }
+        });
+
+        return true;
+    },
+
+    async updateProfile(req) {
+        const userId = req.user.id;
+        const { fullName, phoneNumber } = req.body;
+
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { role: true },
+        });
+        if (!userExist) {
+            throw new BadRequestException("User not found");
+        }
+
+        // Build update data & track changes
+        const updateData = {};
+        const changes = {};
+
+        if (fullName !== undefined && fullName !== userExist.fullName) {
+            updateData.fullName = fullName;
+            changes.fullName = { from: userExist.fullName, to: fullName };
+        }
+        if (phoneNumber !== undefined && phoneNumber !== userExist.phoneNumber) {
+            updateData.phoneNumber = phoneNumber;
+            changes.phoneNumber = { from: userExist.phoneNumber, to: phoneNumber };
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            throw new BadRequestException("No changes detected");
+        }
+
+        // Update user
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+            include: { role: true },
+        });
+
+        // Create log entry
+        const log = await prisma.apiLog.create({
+            data: {
+                method: req.method,
+                path: req.originalUrl,
+                statusCode: 200,
+                userId: userId,
+                userEmail: userExist.email,
+                ipAddress: req.ip || req.headers['x-forwarded-for'],
+                userAgent: req.headers['user-agent'],
+                requestBody: JSON.stringify(changes),
+                responseTime: null,
+                errorMessage: null,
+            },
+        });
+
+        // Send update notification
+        await notifyUserUpdated(userId, changes, userId);
+
+        return { user: updatedUser, log };
+    },
+
+    async checkUserExists(req) {
+        const { email } = req.body;
+
+        // Validate email
+        if (!email) {
+            throw new BadRequestException("Email is required");
+        }
+        validateEmail(email);
+
+        // Check if user exists
+        const userExist = await prisma.user.findUnique({
+            where: { email: email },
+            select: {
+                email: true,
+                fullName: true
+            }
+        });
+
+        if (userExist) {
+            return {
+                exists: true,
+                email: userExist.email,
+                fullName: userExist.fullName
+            };
+        }
+
+        return {
+            exists: false,
+            email: email
+        };
     }
 
-    return true;
-  },
-
-  async createUsers(req) {
-    const { fullName, email, password, phoneNumber, roleName } = req.body;
-
-    // Validate email
-    validateEmail(email);
-    // Validate password
-    validatePassword(password);
-
-    // check email exists
-    const userExist = await prisma.user.findUnique({
-      where: { email: email },
-    });
-    if (userExist) {
-      throw new BadRequestException("Email already exists");
-    }
-
-    // check role exists
-    const role = await prisma.role.findUnique({
-      where: { name: roleName },
-    });
-    if (!role) {
-      throw new BadRequestException("Role does not exist");
-    }
-
-    // Hash Password
-    const hashedPassword = bcrypt.hashSync(password, 10);
-
-    // Create User
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        fullName,
-        phoneNumber,
-        roleId: role.id,
-        resetPasswordToken: null,
-        resetPasswordExpires: null,
-      },
-      include: { role: true },
-    });
-
-    // Log audit
-    if (req.user) {
-      const creator = await prisma.user.findUnique({
-        where: { id: req.user.id },
-        include: { role: true },
-      });
-      await logUserCreate(newUser, creator, req.ip);
-    }
-
-    // Send welcome notification
-    await notifyUserCreated(newUser, req.user?.id);
-
-    return newUser;
-  },
-
-  async updateUser(req) {
-    const { userId } = req.params;
-    const { fullName, phoneNumber, roleName, status } = req.body;
-
-    // Check if user exists
-    const userExist = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-    if (!userExist) {
-      throw new BadRequestException("User not found");
-    }
-
-    // Build update data
-    const updateData = {};
-    if (fullName !== undefined) updateData.fullName = fullName;
-    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
-    if (status !== undefined) {
-      if (!["ACTIVE", "INACTIVE"].includes(status)) {
-        throw new BadRequestException(
-          "Invalid status. Must be ACTIVE or INACTIVE",
-        );
-      }
-      updateData.status = status;
-      updateData.isActive = status === "ACTIVE";
-    }
-
-    // If roleName is provided, find and update role
-    if (roleName !== undefined) {
-      const role = await prisma.role.findUnique({
-        where: { name: roleName },
-      });
-      if (!role) {
-        throw new BadRequestException("Role does not exist");
-      }
-      updateData.roleId = role.id;
-    }
-
-    // Update user
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      include: { role: true },
-    });
-
-    // Send update notification
-    await notifyUserUpdated(userId, updateData, req.user?.id);
-
-    return updatedUser;
-  },
-
-  async deleteUser(req) {
-    const { userId } = req.params;
-
-    // Check if user exists
-    const userExist = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { role: true },
-    });
-    if (!userExist) {
-      throw new BadRequestException("User not found");
-    }
-
-    // Không cho phép xóa chính mình
-    if (userId === req.user.id) {
-      throw new BadRequestException("Cannot delete yourself");
-    }
-
-    // Không cho phép xóa Admin
-    if (userExist.role.name === "Admin") {
-      throw new BadRequestException("Cannot delete Admin user");
-    }
-
-    // Send deletion notification before deleting
-    await notifyUserDeleted(userId, req.user?.id);
-
-    // Delete user's avatar from cloudinary if exists
-    if (
-      userExist.avatarCloudId &&
-      userExist.avatarCloudId !== "public/images/default_avatar"
-    ) {
-      await cloudinary.uploader.destroy(userExist.avatarCloudId);
-    }
-
-    // Delete user
-    await prisma.user.delete({
-      where: { id: userId },
-    });
-
-    return true;
-  },
-
-  async updateProfile(req) {
-    const userId = req.user.id;
-    const { fullName, phoneNumber } = req.body;
-
-    // Check if user exists
-    const userExist = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { role: true },
-    });
-    if (!userExist) {
-      throw new BadRequestException("User not found");
-    }
-
-    // Build update data & track changes
-    const updateData = {};
-    const changes = {};
-
-    if (fullName !== undefined && fullName !== userExist.fullName) {
-      updateData.fullName = fullName;
-      changes.fullName = { from: userExist.fullName, to: fullName };
-    }
-    if (phoneNumber !== undefined && phoneNumber !== userExist.phoneNumber) {
-      updateData.phoneNumber = phoneNumber;
-      changes.phoneNumber = { from: userExist.phoneNumber, to: phoneNumber };
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      throw new BadRequestException("No changes detected");
-    }
-
-    // Update user
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      include: { role: true },
-    });
-
-    // Create log entry
-    const log = await prisma.apiLog.create({
-      data: {
-        method: req.method,
-        path: req.originalUrl,
-        statusCode: 200,
-        userId: userId,
-        userEmail: userExist.email,
-        ipAddress: req.ip || req.headers["x-forwarded-for"],
-        userAgent: req.headers["user-agent"],
-        requestBody: JSON.stringify(changes),
-        responseTime: null,
-        errorMessage: null,
-      },
-    });
-
-    // Send update notification
-    await notifyUserUpdated(userId, changes, userId);
-
-    return { user: updatedUser, log };
-  },
-
-  async checkUserExists(req) {
-    const { email } = req.body;
-
-    // Validate email
-    if (!email) {
-      throw new BadRequestException("Email is required");
-    }
-    validateEmail(email);
-
-    // Check if user exists
-    const userExist = await prisma.user.findUnique({
-      where: { email: email },
-      select: {
-        email: true,
-        fullName: true,
-      },
-    });
-
-    if (userExist) {
-      return {
-        exists: true,
-        email: userExist.email,
-        fullName: userExist.fullName,
-      };
-    }
-
-    return {
-      exists: false,
-      email: email,
-    };
-  },
 };
+
