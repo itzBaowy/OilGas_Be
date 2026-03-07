@@ -740,65 +740,19 @@ async function main() {
 
   console.log("✅ Seed InstrumentEngineer thành công!");
 
-  // Seed MaintenanceHistory
+  // Seed MaintenanceHistory (unified — equipment + instrument maintenance in 1 table)
   console.log("🌱 Đang khởi tạo dữ liệu MaintenanceHistory...");
 
   const allEquipments = await prisma.equipment.findMany();
-  const maintenanceTypes = ["Preventive", "Corrective", "Calibration"];
-  const maintenanceStatuses = ["Completed", "Pending", "Cancelled"];
-  const engineers = [
-    "John Smith",
-    "Jane Doe",
-    "Mike Johnson",
-    "Sarah Williams",
-    "David Brown",
-  ];
-
-  const maintenanceHistories = [];
-  for (let i = 0; i < allEquipments.length; i++) {
-    const equipment = allEquipments[i];
-    // Tạo 2-3 lịch sử bảo trì cho mỗi thiết bị
-    const maintenanceCount = 2 + (i % 2);
-
-    for (let j = 0; j < maintenanceCount; j++) {
-      maintenanceHistories.push({
-        equipmentId: equipment.id,
-        date: new Date(2024, (i + j) % 12, ((i + j) % 28) + 1),
-        type: maintenanceTypes[(i + j) % maintenanceTypes.length],
-        description: `${maintenanceTypes[(i + j) % maintenanceTypes.length]} maintenance for ${equipment.name}`,
-        performedBy: engineers[(i + j) % engineers.length],
-        status: maintenanceStatuses[(i + j) % maintenanceStatuses.length],
-        cost:
-          maintenanceStatuses[(i + j) % maintenanceStatuses.length] ===
-            "Completed"
-            ? 500 + i * 100 + j * 50
-            : null,
-      });
-    }
-  }
-
-  for (const maintenance of maintenanceHistories) {
-    await prisma.maintenanceHistory.create({
-      data: maintenance,
-    });
-  }
-  console.log(
-    `✅ Tạo ${maintenanceHistories.length} maintenance history records`,
-  );
-
-  // Seed InstrumentMaintenanceHistory
-  console.log("🌱 Đang khởi tạo dữ liệu InstrumentMaintenanceHistory...");
-
-  // Reuse allInstruments from above (already fetched for InstrumentEngineer)
-  const instrumentMaintenanceTypes = [
+  const maintenanceTypes = [
     "Preventive",
     "Corrective",
     "Calibration",
     "Inspection",
     "Replacement",
   ];
-  const instrumentMaintenanceStatuses = ["Completed", "Pending", "Cancelled"];
-  const technicians = [
+  const maintenanceStatuses = ["Completed", "Pending", "Cancelled"];
+  const engineers = [
     "John Smith",
     "Jane Doe",
     "Mike Johnson",
@@ -837,56 +791,39 @@ async function main() {
     `✅ Assigned ${allEquipments.length} equipments to ${allInstruments.length} instruments`,
   );
 
-  const instrumentMaintenanceHistories = [];
-  for (let i = 0; i < allInstruments.length; i++) {
-    const instrument = allInstruments[i];
-    // Get equipments for this instrument
-    const instrumentEquipments = allEquipments.filter(
-      (eq) => eq.instrumentId === instrument.id,
-    );
-
-    // Tạo 3-5 lịch sử bảo trì cho mỗi instrument, mỗi cái link với 1 equipment
-    const maintenanceCount = 3 + (i % 3);
+  // Create maintenance records for each equipment (2-3 per equipment)
+  // Each record also links to the equipment's parent instrument
+  const maintenanceHistories = [];
+  for (let i = 0; i < allEquipments.length; i++) {
+    const equipment = allEquipments[i];
+    const maintenanceCount = 2 + (i % 2);
 
     for (let j = 0; j < maintenanceCount; j++) {
-      const monthOffset = (i * maintenanceCount + j) % 12;
-      const dayOffset = ((i + j) % 28) + 1;
-      // Pick equipment from this instrument's equipment list
-      const equipment =
-        instrumentEquipments.length > 0
-          ? instrumentEquipments[j % instrumentEquipments.length]
-          : null;
-
-      instrumentMaintenanceHistories.push({
-        instrumentId: instrument.id,
-        equipmentId: equipment?.id || null,
-        date: new Date(2024, monthOffset, dayOffset),
-        type: instrumentMaintenanceTypes[
-          (i + j) % instrumentMaintenanceTypes.length
-        ],
-        description: `${instrumentMaintenanceTypes[(i + j) % instrumentMaintenanceTypes.length]} maintenance for ${instrument.name} - Routine inspection and servicing`,
-        performedBy: technicians[(i + j) % technicians.length],
-        status:
-          instrumentMaintenanceStatuses[
-          (i + j) % instrumentMaintenanceStatuses.length
-          ],
+      const typeIndex = (i + j) % maintenanceTypes.length;
+      const statusIndex = (i + j) % maintenanceStatuses.length;
+      maintenanceHistories.push({
+        equipmentId: equipment.id,
+        instrumentId: equipment.instrumentId || null,
+        date: new Date(2024, (i + j) % 12, ((i + j) % 28) + 1),
+        type: maintenanceTypes[typeIndex],
+        description: `${maintenanceTypes[typeIndex]} maintenance for ${equipment.name}`,
+        performedBy: engineers[(i + j) % engineers.length],
+        status: maintenanceStatuses[statusIndex],
         cost:
-          instrumentMaintenanceStatuses[
-            (i + j) % instrumentMaintenanceStatuses.length
-          ] === "Completed"
-            ? 1500 + i * 500 + j * 200
-            : null, // Instruments are more expensive to maintain
+          maintenanceStatuses[statusIndex] === "Completed"
+            ? 500 + i * 100 + j * 50
+            : null,
       });
     }
   }
 
-  for (const maintenance of instrumentMaintenanceHistories) {
-    await prisma.instrumentMaintenanceHistory.create({
+  for (const maintenance of maintenanceHistories) {
+    await prisma.maintenanceHistory.create({
       data: maintenance,
     });
   }
   console.log(
-    `✅ Tạo ${instrumentMaintenanceHistories.length} instrument maintenance history records`,
+    `✅ Tạo ${maintenanceHistories.length} maintenance history records`,
   );
 
   // Seed Inventory
@@ -1035,10 +972,7 @@ async function main() {
   console.log(`   - Instruments: ${instruments.length}`);
   console.log(`   - Instrument Engineers: ${engineerAssignments.length}`);
   console.log(
-    `   - Equipment Maintenance History: ${maintenanceHistories.length}`,
-  );
-  console.log(
-    `   - Instrument Maintenance History: ${instrumentMaintenanceHistories.length}`,
+    `   - Maintenance History: ${maintenanceHistories.length}`,
   );
   console.log(`   - Inventories: ${inventories.length}`);
   console.log(`   - Inventory Ledgers: ${ledgers.length}`);

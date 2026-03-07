@@ -264,6 +264,17 @@ export const equipmentService = {
   async getAllMaintenanceHistory(req) {
     const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
+    // Override filters for exact match (type, status)
+    // buildQueryPrisma converts strings to { contains }, but we need exact match for enum fields
+    if (where.type && typeof where.type === "object" && where.type.contains) {
+      where.type = where.type.contains;
+    }
+    if (where.status && typeof where.status === "object" && where.status.contains) {
+      where.status = where.status.contains;
+    }
+    // Override description filter — search by partial match (already contains from buildQueryPrisma)
+    // No additional override needed for description
+
     // Handle equipmentId filter separately (not from JSON filters)
     // FE sends equipmentId as custom ID (EQ-001), need to lookup ObjectId
     if (req.query.equipmentId) {

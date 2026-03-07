@@ -471,18 +471,19 @@ export const instrumentService = {
       where.status = where.status.contains;
     }
 
-    // Special handling for instrumentId filter
+    // Only show records that belong to an instrument
+    where.instrumentId = { not: null };
+
+    // Special handling for instrumentId filter from query params
     // instrumentId in filters is custom ID (INS-001), not ObjectId
     // Need to filter through instrument relation
-    if (where.instrumentId) {
-      const customInstrumentId = typeof where.instrumentId === "object" && where.instrumentId.contains
-        ? where.instrumentId.contains
-        : where.instrumentId;
-      
+    if (req.query.instrumentId) {
+      const customInstrumentId = req.query.instrumentId;
       // Use nested where for instrument relation
       where.instrument = where.instrument || {};
       where.instrument.instrumentId = customInstrumentId;
-      delete where.instrumentId; // Remove direct instrumentId filter
+      delete where.instrumentId; // Remove any direct filter, re-add the not-null check
+      // Ensure we still only get records with instruments
     }
 
     // Add date range filter if provided
@@ -504,8 +505,29 @@ export const instrumentService = {
       }
     }
 
-    // Get maintenance history with instrument details
-    const maintenanceHistoryPromise = prisma.instrumentMaintenanceHistory.findMany({
+    // Search across multiple fields using OR condition
+    // Supports searching in: description, performedBy, instrument name
+    if (req.query.search) {
+      const searchTerm = req.query.search;
+      const searchConditions = [
+        { description: { contains: searchTerm, mode: "insensitive" } },
+        { performedBy: { contains: searchTerm, mode: "insensitive" } },
+        { instrument: { name: { contains: searchTerm, mode: "insensitive" } } },
+      ];
+      // Merge with existing OR conditions (if any from buildQueryPrisma filters)
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR },
+          { OR: searchConditions },
+        ];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
+    }
+
+    // Get maintenance history with instrument and equipment details
+    const maintenanceHistoryPromise = prisma.maintenanceHistory.findMany({
       where: where,
       skip: index,
       take: pageSize,
@@ -529,10 +551,17 @@ export const instrumentService = {
             location: true,
           },
         },
+        equipment: {
+          select: {
+            equipmentId: true,
+            name: true,
+            type: true,
+          },
+        },
       },
     });
 
-    const totalItemPromise = prisma.instrumentMaintenanceHistory.count({
+    const totalItemPromise = prisma.maintenanceHistory.count({
       where: where,
     });
 
@@ -544,7 +573,7 @@ export const instrumentService = {
     // Map to include instrumentId at top level (custom ID, not ObjectId)
     const items = maintenanceHistory.map(item => ({
       ...item,
-      instrumentId: item.instrument.instrumentId, // Use custom ID (INS-001) instead of ObjectId
+      instrumentId: item.instrument?.instrumentId, // Use custom ID (INS-001) instead of ObjectId
     }));
 
     return {
@@ -569,7 +598,7 @@ export const instrumentService = {
       throw new NotFoundException("Instrument not found");
     }
 
-    // Build where clause with optional date range
+    // Build where clause — get maintenance records linked to this instrument
     const whereClause = {
       instrumentId: instrument.id, // Use ObjectId here
     };
@@ -579,14 +608,12 @@ export const instrumentService = {
       whereClause.date = {};
 
       if (queryParams.startDate) {
-        // Set to start of day (00:00:00.000)
         const startDate = new Date(queryParams.startDate);
         startDate.setHours(0, 0, 0, 0);
         whereClause.date.gte = startDate;
       }
 
       if (queryParams.endDate) {
-        // Set to end of day (23:59:59.999)
         const endDate = new Date(queryParams.endDate);
         endDate.setHours(23, 59, 59, 999);
         whereClause.date.lte = endDate;
@@ -594,14 +621,22 @@ export const instrumentService = {
     }
 
     // Get maintenance history sorted by date descending (newest first)
-    const maintenanceHistory = await prisma.instrumentMaintenanceHistory.findMany({
+    const maintenanceHistory = await prisma.maintenanceHistory.findMany({
       where: whereClause,
       orderBy: {
         date: "desc",
       },
+      include: {
+        equipment: {
+          select: {
+            equipmentId: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
     });
 
-    // Return empty array with appropriate message if no records found
     return maintenanceHistory;
   },
 
@@ -629,6 +664,7 @@ export const instrumentService = {
       "Completed",
       "In Progress",
       "Scheduled",
+      "Pending",
       "Cancelled"
     ];
     return maintenanceStatuses;
@@ -679,8 +715,11 @@ export const instrumentService = {
       ];
     }
 
+    // Only include records that belong to an instrument
+    where.instrumentId = { not: null };
+
     // Get all maintenance records with instrument info
-    const maintenanceRecords = await prisma.instrumentMaintenanceHistory.findMany({
+    const maintenanceRecords = await prisma.maintenanceHistory.findMany({
       where,
       orderBy: { date: "desc" },
       include: {

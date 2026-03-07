@@ -23,22 +23,25 @@ export function buildQueryPrisma(query) {
     filters = {};
   }
 
-  // xử lý filters
+  // Sanitize filters — only allow primitive values (string, number, boolean)
+  // Reject objects/arrays to prevent Prisma operator injection
+  const sanitized = {};
   for (const [key, value] of Object.entries(filters)) {
-    // string
     if (typeof value === "string") {
-      filters[key] = {
+      sanitized[key] = {
         contains: value,
+        mode: "insensitive",
       };
+    } else if (typeof value === "number" || typeof value === "boolean") {
+      sanitized[key] = value;
     }
-
-    // date
+    // Objects, arrays, etc. are silently ignored for security
   }
 
   const index = (page - 1) * pageSize;
 
   const where = {
-    ...filters,
+    ...sanitized,
   };
 
   return {
