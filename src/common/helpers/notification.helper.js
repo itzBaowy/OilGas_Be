@@ -92,6 +92,31 @@ export const notifyMaintenanceRequired = async (recipientIds, equipment) => {
     }
 };
 
+export const notifyMaintenanceScheduled = async (engineerId, equipment, scheduledDate, maintenanceType, scheduledByName) => {
+    try {
+        const formattedDate = new Date(scheduledDate).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
+
+        await notificationService.createNotification({
+            body: {
+                recipientId: engineerId,
+                title: 'Maintenance Assigned',
+                message: `You have been assigned ${maintenanceType} maintenance for "${equipment.name}" (${equipment.equipmentId}) scheduled on ${formattedDate}.`,
+                type: 'INFO',
+                category: 'MAINTENANCE',
+                relatedId: equipment.id,
+                link: `/maintenance-history`,
+            },
+            user: scheduledByName ? { id: scheduledByName } : undefined,
+        });
+    } catch (error) {
+        console.error('Error sending maintenance scheduled notification:', error);
+    }
+};
+
 export const notifyLowStock = async (recipientIds, inventory, warehouse) => {
     try {
         await notificationService.createBulkNotifications({

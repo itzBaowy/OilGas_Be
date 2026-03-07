@@ -470,31 +470,35 @@ async function main() {
     175: { name: "Other_ProductionRiser_01", type: "Other", label: "Production Riser" },
   };
   const equipments = [];
-  for (let i = 1; i <= 15; i++) {
-    const equipmentId = `EQ-${String(i).padStart(3, "0")}`;
-    const type = equipmentTypes[(i - 1) % equipmentTypes.length];
-    const location = locations[(i - 1) % locations.length];
-    const manufacturer = manufacturers[(i - 1) % manufacturers.length];
+  const meshIds = Object.keys(MESH_EQUIPMENT_MAP).map(Number);
+
+  for (let i = 0; i < meshIds.length; i++) {
+    const meshId = meshIds[i];
+    const meshData = MESH_EQUIPMENT_MAP[meshId];
+    const equipmentId = `EQ-${String(i + 1).padStart(3, "0")}`;
+    const location = locations[i % locations.length];
+    const manufacturer = manufacturers[i % manufacturers.length];
 
     equipments.push({
       equipmentId,
-      name: `${type} ${equipmentId}`,
-      serialNumber: `SN-${Date.now()}-${i}`,
-      type,
-      model: `Model-${type}-${i}`,
+      name: meshData.name,
+      serialNumber: `SN-${Date.now()}-${meshId}`,
+      type: meshData.type,
+      model: `Model-${meshData.type}-${meshId}`,
       status: i % 5 === 0 ? "Maintenance" : i % 7 === 0 ? "Inactive" : "Active",
       location,
       manufacturer,
       installDate: new Date(2020 + (i % 5), i % 12, (i % 28) + 1),
-      description: `${type} được lắp đặt tại ${location}`,
+      description: meshData.label,
       quantity: 50 + i * 10, // Initial quantity for each equipment
+      meshId: meshId, // Add meshId from MESH_EQUIPMENT_MAP
       isDeleted: false,
       specifications: {
-        capacity: `${i * 100}L`,
-        pressure: `${i * 10}PSI`,
-        temperature: `${i * 5}°C`,
+        capacity: `${(i + 1) * 100}L`,
+        pressure: `${(i + 1) * 10}PSI`,
+        temperature: `${(i + 1) * 5}°C`,
         voltage: "220V",
-        power: `${i * 2}kW`,
+        power: `${(i + 1) * 2}kW`,
       },
     });
   }
@@ -766,7 +770,7 @@ async function main() {
         status: maintenanceStatuses[(i + j) % maintenanceStatuses.length],
         cost:
           maintenanceStatuses[(i + j) % maintenanceStatuses.length] ===
-          "Completed"
+            "Completed"
             ? 500 + i * 100 + j * 50
             : null,
       });
@@ -864,7 +868,7 @@ async function main() {
         performedBy: technicians[(i + j) % technicians.length],
         status:
           instrumentMaintenanceStatuses[
-            (i + j) % instrumentMaintenanceStatuses.length
+          (i + j) % instrumentMaintenanceStatuses.length
           ],
         cost:
           instrumentMaintenanceStatuses[

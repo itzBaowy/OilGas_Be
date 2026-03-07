@@ -7,7 +7,7 @@ const RESET_TOKEN_SECRET = process.env.RESET_TOKEN_SECRET;
 
 export const tokenService = {
     createTokens(userId) {
-        const accessToken = jsonwebtoken.sign({ userId: userId }, ACCESS_TOKEN_SECRET, { expiresIn: "15m" });
+        const accessToken = jsonwebtoken.sign({ userId: userId }, ACCESS_TOKEN_SECRET, { expiresIn: "10m" });
         const refreshToken = jsonwebtoken.sign({ userId: userId }, REFRESH_TOKEN_SECRET, { expiresIn: "7d" });
 
         return {

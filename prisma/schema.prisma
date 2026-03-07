@@ -147,6 +147,7 @@ model Equipment {
   description     String?
   expiredDate     DateTime?
   quantity        Int      @default(0) // Total quantity of this equipment (updated by receive/dispatch)
+  meshId          Int?     // 3D mesh identifier for visualization
   isDeleted       Boolean  @default(false)
   specifications  Json?    // Flexible technical specs
   lastMaintenanceDate   DateTime?

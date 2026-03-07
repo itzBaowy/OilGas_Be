@@ -5,6 +5,7 @@ import {
   validateEquipmentUpdateData,
 } from "../common/helpers/validate.helper.js";
 import { buildQueryPrisma } from "../common/helpers/build_query_prisma.js";
+import { notifyMaintenanceScheduled } from "../common/helpers/notification.helper.js";
 
 export const equipmentService = {
   async generateCustomId() {
@@ -413,5 +414,236 @@ export const equipmentService = {
     ].sort();
 
     return uniqueTypes;
+  },
+
+  /**
+   * Schedule maintenance for an equipment
+   * SRS 3.2.2.6b - Maintenance Assign (Schedule)
+   *
+   * @param {Object} req - Express request
+   * @param {string} req.params.equipmentId - Equipment custom ID (EQ-001)
+   * @param {string} req.body.engineerId - User ObjectId of the responsible engineer
+   * @param {string} req.body.type - Maintenance type
+   * @param {string} req.body.date - Scheduled date (ISO string or YYYY-MM-DD)
+   * @param {string} [req.body.description] - Optional description
+   * @param {number} [req.body.cost] - Optional estimated cost
+   */
+  async createMaintenanceSchedule(req) {
+    const { equipmentId } = req.params;
+    const { engineerId, type, date, description, cost } = req.body;
+
+    // --- Validate required fields ---
+    if (!type || !type.trim()) {
+      throw new BadRequestException("Maintenance type is required");
+    }
+    if (!date) {
+      throw new BadRequestException("Scheduled date is required");
+    }
+    if (!engineerId || !engineerId.trim()) {
+      throw new BadRequestException("Responsible engineer is required");
+    }
+
+    // --- Validate maintenance type ---
+    const validTypes = [
+      "Preventive",
+      "Corrective",
+      "Calibration",
+      "Inspection",
+      "Replacement",
+    ];
+    if (!validTypes.includes(type)) {
+      throw new BadRequestException(
+        `Invalid maintenance type. Must be one of: ${validTypes.join(", ")}`,
+      );
+    }
+
+    // --- Validate scheduled date is in the future ---
+    const scheduledDate = new Date(date);
+    if (isNaN(scheduledDate.getTime())) {
+      throw new BadRequestException("Invalid date format");
+    }
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Compare at day level
+    if (scheduledDate < now) {
+      throw new BadRequestException("Scheduled date must be today or in the future");
+    }
+
+    // --- Find equipment ---
+    const equipment = await prisma.equipment.findUnique({
+      where: { equipmentId },
+    });
+    if (!equipment || equipment.isDeleted) {
+      throw new NotFoundException("Equipment not found");
+    }
+
+    // --- Find engineer and validate role ---
+    const engineer = await prisma.user.findUnique({
+      where: { id: engineerId },
+      include: { role: true },
+    });
+    if (!engineer) {
+      throw new BadRequestException("Engineer not found");
+    }
+    if (engineer.role.name !== "Engineer") {
+      throw new BadRequestException(
+        `User "${engineer.fullName}" is not an Engineer (current role: ${engineer.role.name})`,
+      );
+    }
+
+    // --- Create maintenance schedule record ---
+    const maintenanceRecord = await prisma.maintenanceHistory.create({
+      data: {
+        equipmentId: equipment.id, // Use ObjectId
+        date: scheduledDate,
+        type: type,
+        description: description && description.trim()
+          ? description.trim()
+          : `Scheduled ${type} maintenance for ${equipment.name}`,
+        performedBy: engineer.fullName,
+        status: "Scheduled",
+        cost: cost != null ? parseFloat(cost) : null,
+      },
+    });
+
+    // --- Update equipment.nextMaintenanceDate if this schedule is sooner ---
+    if (
+      !equipment.nextMaintenanceDate ||
+      scheduledDate < new Date(equipment.nextMaintenanceDate)
+    ) {
+      await prisma.equipment.update({
+        where: { equipmentId },
+        data: { nextMaintenanceDate: scheduledDate },
+      });
+    }
+
+    // --- Send notification to the assigned engineer (non-blocking) ---
+    notifyMaintenanceScheduled(
+      engineerId,
+      equipment,
+      scheduledDate,
+      type,
+      req.user?.id,
+    );
+
+    return maintenanceRecord;
+  },
+
+  /**
+   * Update maintenance record status with state machine validation
+   * Valid transitions:
+   *   Scheduled   → In Progress | Cancelled
+   *   In Progress → Completed   | Cancelled
+   *
+   * @param {Object} req - Express request
+   * @param {string} req.params.id - MaintenanceHistory ObjectId
+   * @param {string} req.body.status - New status
+   * @param {number} [req.body.cost] - Optional cost (useful when completing)
+   * @param {string} [req.body.notes] - Optional completion notes
+   */
+  async updateMaintenanceStatus(req) {
+    const { id } = req.params;
+    const { status, cost, notes } = req.body;
+
+    // --- Validate required fields ---
+    if (!status || !status.trim()) {
+      throw new BadRequestException("Status is required");
+    }
+
+    const validStatuses = ["Scheduled", "In Progress", "Completed", "Cancelled"];
+    if (!validStatuses.includes(status)) {
+      throw new BadRequestException(
+        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      );
+    }
+
+    // --- Find maintenance record ---
+    const record = await prisma.maintenanceHistory.findUnique({
+      where: { id },
+      include: {
+        equipment: true,
+      },
+    });
+    if (!record) {
+      throw new NotFoundException("Maintenance record not found");
+    }
+
+    // --- Authorization: check if user can update this record ---
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { role: true },
+    });
+    const roleName = currentUser?.role?.name || "";
+    const isAdminOrSupervisor =
+      roleName === "Admin" ||
+      roleName === "Supervisor" ||
+      roleName === "Field Supervisor";
+    const isAssignedEngineer = record.performedBy === currentUser?.fullName;
+
+    if (!isAdminOrSupervisor && !isAssignedEngineer) {
+      throw new BadRequestException(
+        "You are not authorized to update this maintenance record. Only the assigned engineer or an admin/supervisor can update it.",
+      );
+    }
+
+    // --- State machine: validate transition ---
+    const allowedTransitions = {
+      Scheduled: ["In Progress", "Cancelled"],
+      "In Progress": ["Completed", "Cancelled"],
+    };
+
+    const allowed = allowedTransitions[record.status];
+    if (!allowed) {
+      throw new BadRequestException(
+        `Cannot update status from "${record.status}". This record is already finalized.`,
+      );
+    }
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Invalid transition: "${record.status}" → "${status}". Allowed: ${allowed.join(", ")}`,
+      );
+    }
+
+    // --- Build update data ---
+    const updateData = { status };
+
+    // Allow updating cost when completing
+    if (cost != null) {
+      updateData.cost = parseFloat(cost);
+    }
+
+    // Allow appending notes to description
+    if (notes && notes.trim()) {
+      updateData.description = record.description
+        ? `${record.description}\n[${status}] ${notes.trim()}`
+        : `[${status}] ${notes.trim()}`;
+    }
+
+    // --- Update the record ---
+    const updatedRecord = await prisma.maintenanceHistory.update({
+      where: { id },
+      data: updateData,
+      include: {
+        equipment: {
+          select: {
+            equipmentId: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // --- Side effects on Completed ---
+    if (status === "Completed" && record.equipment) {
+      await prisma.equipment.update({
+        where: { id: record.equipmentId },
+        data: {
+          lastMaintenanceDate: new Date(),
+          status: "Active", // Equipment back to active after maintenance
+        },
+      });
+    }
+
+    return updatedRecord;
   },
 };
