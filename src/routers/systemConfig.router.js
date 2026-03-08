@@ -130,4 +130,31 @@ systemConfigRouter.put('/', protect, checkRole(['Admin']), systemConfigControlle
  */
 systemConfigRouter.post('/reset', protect, checkRole(['Admin']), systemConfigController.resetIncidentThresholds);
 
+/**
+ * @swagger
+ * /api/system-config/scan:
+ *   get:
+ *     summary: Quét vi phạm ngưỡng hiện tại (tất cả Equipment vs Thresholds)
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Kết quả quét vi phạm
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 thresholds:
+ *                   type: object
+ *                 violatingIncidents:
+ *                   type: array
+ *                 equipmentViolations:
+ *                   type: array
+ *                 totalViolations:
+ *                   type: integer
+ */
+systemConfigRouter.get('/scan', protect, systemConfigController.scanCurrentViolations);
+
 export default systemConfigRouter;

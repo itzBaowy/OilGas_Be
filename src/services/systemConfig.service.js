@@ -4,6 +4,13 @@ import { incidentService } from './incident.service.js';
 import { notificationService } from './notification.service.js';
 import { getIO } from '../common/socket/init.socket.js';
 
+const parseNumericValue = (val) => {
+  if (val == null) return null;
+  if (typeof val === 'number') return val;
+  const num = parseFloat(String(val).replace(/[^0-9.\-]/g, ''));
+  return isNaN(num) ? null : num;
+};
+
 const DEFAULT_THRESHOLDS = {
   pressureLimit: 120,
   tempLimit: 90,
@@ -64,9 +71,12 @@ export const systemConfigService = {
 
     const savedConfig = JSON.parse(config.value);
 
-    // ── 2. Background: Quét thiết bị vi phạm ngưỡng mới (fire-and-forget) ──
-    this._scanViolationsAfterThresholdChange(savedConfig, userId)
-      .catch((err) => console.error('[ThresholdScan] Background scan failed:', err));
+    /* [THRESHOLD_SCAN_DISABLED] ───────────────────────────────────────────
+     * Tạm tắt: Background quét thiết bị vi phạm ngưỡng mới sau khi update.
+     * Khi bật lại: bỏ comment block bên dưới.
+     * ──────────────────────────────────────────────────────────────────────── */
+    // this._scanViolationsAfterThresholdChange(savedConfig, userId)
+    //   .catch((err) => console.error('[ThresholdScan] Background scan failed:', err));
 
     // ── 3. Trả response ngay — không chờ background scan ────────────────────
     return savedConfig;
@@ -77,16 +87,16 @@ export const systemConfigService = {
    * 
    * Flow:
    * 1. Query tất cả incident OPEN/ACKNOWLEDGED có currentReading vượt ngưỡng mới
-   * 2. Query tất cả instrument Active chưa có incident OPEN
-   * 3. Tạo incident mới cho thiết bị vi phạm (nếu có)
-   * 4. Gửi notification cho Supervisors + Engineers
-   * 5. Emit socket event "threshold_updated" cho toàn bộ Frontend
+   * 2. Query tất cả Equipment thuộc Instrument Active — kiểm tra specifications
+   * 3. Tạo incident mới cho thiết bị vi phạm chưa có incident active
+   * 4. Cập nhật Instrument status → Maintenance nếu có vi phạm
+   * 5. Gửi notification cho Supervisors + Engineers
+   * 6. Emit socket event "threshold_updated" cho toàn bộ Frontend
    */
   async _scanViolationsAfterThresholdChange(newThresholds, adminUserId) {
     const { pressureLimit, tempLimit } = newThresholds;
 
-    // ── Tìm incidents đang active có currentReading vượt ngưỡng MỚI ────────
-    // (Những incident này đã tồn tại nhưng giờ ngưỡng hạ → chúng "nghiêm trọng hơn")
+    // ── 1. Tìm incidents đang active có currentReading vượt ngưỡng MỚI ─────
     const existingViolations = await prisma.incident.findMany({
       where: {
         status: { in: ['OPEN', 'ACKNOWLEDGED'] },
@@ -102,7 +112,6 @@ export const systemConfigService = {
       },
     });
 
-    // Lọc: chỉ lấy những incident có currentReading thực sự vượt ngưỡng MỚI
     const pressureViolations = existingViolations.filter(
       (inc) => inc.type === 'PRESSURE_ANOMALY' && inc.currentReading > pressureLimit
     );
@@ -110,10 +119,13 @@ export const systemConfigService = {
       (inc) => inc.type === 'TEMPERATURE_ANOMALY' && inc.currentReading > tempLimit
     );
 
-    const allViolations = [...pressureViolations, ...tempViolations];
-    const violationCount = allViolations.length;
+    // ── 2. Quét Equipment specifications để phát hiện vi phạm mới ───────────
+    const newIncidents = await this._detectEquipmentViolations(newThresholds, adminUserId);
 
-    // ── Lấy thông tin admin đã thực hiện thay đổi ──────────────────────────
+    const allViolations = [...pressureViolations, ...tempViolations];
+    const totalViolationCount = allViolations.length + newIncidents.length;
+
+    // ── 3. Lấy thông tin admin ──────────────────────────────────────────────
     const adminUser = adminUserId
       ? await prisma.user.findUnique({
           where: { id: adminUserId },
@@ -121,7 +133,7 @@ export const systemConfigService = {
         })
       : null;
 
-    // ── Gửi notification cho tất cả Supervisor và Engineer ──────────────────
+    // ── 4. Gửi notification cho tất cả Supervisor và Engineer ───────────────
     const supervisorsAndEngineers = await prisma.user.findMany({
       where: {
         role: {
@@ -135,11 +147,11 @@ export const systemConfigService = {
     const recipientIds = supervisorsAndEngineers.map((u) => u.id);
 
     if (recipientIds.length > 0) {
-      const notificationData = violationCount > 0
+      const notificationData = totalViolationCount > 0
         ? {
             recipientIds,
             title: 'Threshold Updated — Violations Detected',
-            message: `Threshold settings changed by ${adminUser?.fullName || 'Admin'}. WARNING: ${violationCount} active incident(s) now exceed the new threshold limits (Pressure: ${pressureLimit} psi, Temp: ${tempLimit}°C).`,
+            message: `Threshold settings changed by ${adminUser?.fullName || 'Admin'}. WARNING: ${totalViolationCount} violation(s) detected (Pressure: ${pressureLimit} psi, Temp: ${tempLimit}°C). ${newIncidents.length} new incident(s) created automatically.`,
             type: 'WARNING',
             category: 'SYSTEM',
             link: '/realtime-alerts',
@@ -148,7 +160,7 @@ export const systemConfigService = {
         : {
             recipientIds,
             title: 'Threshold Updated Successfully',
-            message: `Threshold settings changed by ${adminUser?.fullName || 'Admin'}. All active incidents are within safe limits (Pressure: ${pressureLimit} psi, Temp: ${tempLimit}°C).`,
+            message: `Threshold settings changed by ${adminUser?.fullName || 'Admin'}. All readings are within safe limits (Pressure: ${pressureLimit} psi, Temp: ${tempLimit}°C).`,
             type: 'INFO',
             category: 'SYSTEM',
             link: null,
@@ -158,13 +170,20 @@ export const systemConfigService = {
       await notificationService.createBulkNotifications(notificationData);
     }
 
-    // ── Emit socket event cho toàn bộ connected clients ─────────────────────
+    // ── 5. Emit socket event cho toàn bộ connected clients ──────────────────
     const io = getIO();
     if (io) {
       io.emit('threshold_updated', {
         newThresholds: { pressureLimit, tempLimit },
-        violationCount,
-        violations: allViolations.map((v) => ({
+        violationCount: totalViolationCount,
+        existingViolations: allViolations.map((v) => ({
+          instrumentId: v.instrumentId,
+          instrumentName: v.instrumentName,
+          type: v.type,
+          currentReading: v.currentReading,
+        })),
+        newIncidents: newIncidents.map((v) => ({
+          incidentId: v.incidentId,
           instrumentId: v.instrumentId,
           instrumentName: v.instrumentName,
           type: v.type,
@@ -177,8 +196,125 @@ export const systemConfigService = {
 
     console.log(
       `[ThresholdScan] Completed. New limits: P=${pressureLimit}, T=${tempLimit}. ` +
-      `Violations found: ${violationCount}`
+      `Existing violations: ${allViolations.length}, New incidents: ${newIncidents.length}`
     );
+  },
+
+  // Quét Equipment specifications → tạo incident tự động nếu vượt ngưỡng
+  async _detectEquipmentViolations(thresholds, adminUserId) {
+    const { pressureLimit, tempLimit } = thresholds;
+    const createdIncidents = [];
+
+    const equipments = await prisma.equipment.findMany({
+      where: {
+        isDeleted: false,
+        status: { not: 'Inactive' },
+        instrument: { isNot: null },
+      },
+      select: {
+        id: true,
+        equipmentId: true,
+        name: true,
+        specifications: true,
+        instrumentId: true,
+        instrument: {
+          select: { id: true, instrumentId: true, name: true, status: true },
+        },
+      },
+    });
+
+    // Nhóm equipment theo instrument để tránh tạo trùng incident
+    const instrumentViolations = new Map();
+
+    for (const eq of equipments) {
+      if (!eq.specifications || !eq.instrument) continue;
+
+      const specs = typeof eq.specifications === 'string'
+        ? JSON.parse(eq.specifications)
+        : eq.specifications;
+
+      const pressure = parseNumericValue(specs.pressure);
+      const temperature = parseNumericValue(specs.temperature);
+
+      const violations = [];
+      if (pressure !== null && pressure > pressureLimit) {
+        violations.push({ type: 'PRESSURE_ANOMALY', reading: pressure, limit: pressureLimit });
+      }
+      if (temperature !== null && temperature > tempLimit) {
+        violations.push({ type: 'TEMPERATURE_ANOMALY', reading: temperature, limit: tempLimit });
+      }
+
+      if (violations.length === 0) continue;
+
+      const insId = eq.instrument.instrumentId;
+      if (!instrumentViolations.has(insId)) {
+        instrumentViolations.set(insId, {
+          instrument: eq.instrument,
+          violations: [],
+        });
+      }
+      for (const v of violations) {
+        instrumentViolations.get(insId).violations.push({
+          ...v,
+          equipmentId: eq.equipmentId,
+          equipmentName: eq.name,
+        });
+      }
+    }
+
+    // Tạo incident cho từng vi phạm chưa có incident active cùng type + instrumentId
+    for (const [insId, data] of instrumentViolations) {
+      const existingActive = await prisma.incident.findMany({
+        where: {
+          instrumentId: insId,
+          status: { in: ['OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS'] },
+        },
+        select: { type: true },
+      });
+      const activeTypes = new Set(existingActive.map((i) => i.type));
+
+      for (const v of data.violations) {
+        if (activeTypes.has(v.type)) continue;
+        activeTypes.add(v.type);
+
+        const severityLevel = this._calculateSeverity(v.reading, v.limit);
+
+        try {
+          const incident = await incidentService.createIncident(
+            {
+              instrumentId: insId,
+              instrumentName: data.instrument.name,
+              type: v.type,
+              severity: severityLevel,
+              description: `Auto-detected: ${v.equipmentName} (${v.equipmentId}) reading ${v.reading} exceeds threshold ${v.limit}. Triggered by threshold scan.`,
+              currentReading: v.reading,
+              threshold: v.limit,
+            },
+            { id: adminUserId, fullName: 'System Auto-Detection' }
+          );
+          createdIncidents.push(incident);
+
+          // Chuyển Instrument sang Maintenance nếu chưa phải
+          if (data.instrument.status !== 'Maintenance' && data.instrument.status !== 'Decommissioned') {
+            await prisma.instrument.update({
+              where: { id: data.instrument.id },
+              data: { status: 'Maintenance' },
+            });
+          }
+        } catch (err) {
+          console.error(`[ThresholdScan] Failed to create incident for ${insId}:`, err.message);
+        }
+      }
+    }
+
+    return createdIncidents;
+  },
+
+  _calculateSeverity(reading, limit) {
+    const ratio = reading / limit;
+    if (ratio >= 1.5) return 'FATAL';
+    if (ratio >= 1.2) return 'CRITICAL';
+    return 'WARNING';
   },
 
   async resetIncidentThresholds(userId) {
@@ -193,10 +329,101 @@ export const systemConfigService = {
       },
     });
 
-    // Background: Quét thiết bị vi phạm với ngưỡng mặc định (fire-and-forget)
-    this._scanViolationsAfterThresholdChange(DEFAULT_THRESHOLDS, userId)
-      .catch((err) => console.error('[ThresholdScan] Background scan after reset failed:', err));
+    /* [THRESHOLD_SCAN_DISABLED] ───────────────────────────────────────────
+     * Tạm tắt: Background quét thiết bị vi phạm ngưỡng mặc định sau khi reset.
+     * Khi bật lại: bỏ comment block bên dưới.
+     * ──────────────────────────────────────────────────────────────────────── */
+    // this._scanViolationsAfterThresholdChange(DEFAULT_THRESHOLDS, userId)
+    //   .catch((err) => console.error('[ThresholdScan] Background scan after reset failed:', err));
 
     return DEFAULT_THRESHOLDS;
+  },
+
+  // Quét vi phạm khi user mở web lần đầu (GET endpoint, không tạo incident mới)
+  async scanCurrentViolations() {
+    const thresholds = await this.getIncidentThresholds();
+    const { pressureLimit, tempLimit } = thresholds;
+
+    // 1. Incidents đang active vượt ngưỡng
+    const activeIncidents = await prisma.incident.findMany({
+      where: {
+        status: { in: ['OPEN', 'ACKNOWLEDGED', 'IN_PROGRESS'] },
+        currentReading: { not: null },
+      },
+      select: {
+        id: true,
+        incidentId: true,
+        instrumentId: true,
+        instrumentName: true,
+        type: true,
+        severity: true,
+        status: true,
+        currentReading: true,
+        threshold: true,
+      },
+    });
+
+    const violatingIncidents = activeIncidents.filter((inc) => {
+      if (inc.type === 'PRESSURE_ANOMALY') return inc.currentReading > pressureLimit;
+      if (inc.type === 'TEMPERATURE_ANOMALY') return inc.currentReading > tempLimit;
+      return false;
+    });
+
+    // 2. Quét Equipment specifications hiện tại
+    const equipments = await prisma.equipment.findMany({
+      where: {
+        isDeleted: false,
+        status: { not: 'Inactive' },
+        instrument: { isNot: null },
+      },
+      select: {
+        equipmentId: true,
+        name: true,
+        specifications: true,
+        instrument: {
+          select: { instrumentId: true, name: true },
+        },
+      },
+    });
+
+    const equipmentViolations = [];
+    for (const eq of equipments) {
+      if (!eq.specifications || !eq.instrument) continue;
+      const specs = typeof eq.specifications === 'string'
+        ? JSON.parse(eq.specifications) : eq.specifications;
+
+      const pressure = parseNumericValue(specs.pressure);
+      const temperature = parseNumericValue(specs.temperature);
+
+      if (pressure !== null && pressure > pressureLimit) {
+        equipmentViolations.push({
+          equipmentId: eq.equipmentId,
+          equipmentName: eq.name,
+          instrumentId: eq.instrument.instrumentId,
+          instrumentName: eq.instrument.name,
+          type: 'PRESSURE_ANOMALY',
+          currentReading: pressure,
+          threshold: pressureLimit,
+        });
+      }
+      if (temperature !== null && temperature > tempLimit) {
+        equipmentViolations.push({
+          equipmentId: eq.equipmentId,
+          equipmentName: eq.name,
+          instrumentId: eq.instrument.instrumentId,
+          instrumentName: eq.instrument.name,
+          type: 'TEMPERATURE_ANOMALY',
+          currentReading: temperature,
+          threshold: tempLimit,
+        });
+      }
+    }
+
+    return {
+      thresholds: { pressureLimit, tempLimit },
+      violatingIncidents,
+      equipmentViolations,
+      totalViolations: violatingIncidents.length + equipmentViolations.length,
+    };
   },
 };
