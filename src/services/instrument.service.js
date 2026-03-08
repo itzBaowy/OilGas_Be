@@ -135,6 +135,34 @@ export const instrumentService = {
       })),
     }));
 
+    // Enrich Maintenance instruments with active incident status for UI categorization
+    const maintenanceIds = formattedItems
+      .filter((i) => i.status === "Maintenance")
+      .map((i) => i.instrumentId);
+
+    if (maintenanceIds.length > 0) {
+      const activeIncidents = await prisma.incident.findMany({
+        where: {
+          instrumentId: { in: maintenanceIds },
+          status: { not: "RESOLVED" },
+        },
+        orderBy: { createdAt: "desc" },
+        distinct: ["instrumentId"],
+        select: { instrumentId: true, status: true },
+      });
+
+      const incidentMap = {};
+      for (const inc of activeIncidents) {
+        incidentMap[inc.instrumentId] = inc.status;
+      }
+
+      for (const item of formattedItems) {
+        if (item.status === "Maintenance") {
+          item.activeIncidentStatus = incidentMap[item.instrumentId] || null;
+        }
+      }
+    }
+
     return {
       items: formattedItems,
       pagination: {

@@ -19,4 +19,10 @@ export const systemConfigController = {
     const response = responseSuccess(data, 'Configuration reset to defaults successfully');
     res.status(response.statusCode).json(response);
   },
+
+  async scanCurrentViolations(req, res) {
+    const data = await systemConfigService.scanCurrentViolations();
+    const response = responseSuccess(data, 'Violation scan completed successfully');
+    res.status(response.statusCode).json(response);
+  },
 };

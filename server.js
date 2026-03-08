@@ -11,6 +11,7 @@ import { logger } from './src/common/middlewares/logger.middleware.js';
 import { swaggerOptions } from './src/common/swagger/swagger.config.js';
 import { createServer } from 'http';
 import { initSocket } from './src/common/socket/init.socket.js';
+import { incidentService } from './src/services/incident.service.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,4 +55,8 @@ httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running at http://localhost:${PORT}`);
   console.log(`📄 Swagger Docs at http://localhost:${PORT}/api-docs`);
   console.log(`-----------------------------------------`);
+
+  // Startup check: sửa Instrument kẹt Maintenance khi không có incident active
+  incidentService.reconcileInstrumentStatuses()
+    .catch((err) => console.error('[StartupCheck] Failed:', err.message));
 });

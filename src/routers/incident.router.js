@@ -249,7 +249,122 @@ incidentRouter.post(
     incidentController.createIncident
 );
 
+// ── SUPERVISOR: Báo lỗi thủ công ─────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/incidents/report-manual:
+ *   post:
+ *     summary: Supervisor báo lỗi thủ công cho Instrument
+ *     tags: [Incidents]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [instrumentId, instrumentName, type, severity, description]
+ *             properties:
+ *               instrumentId:
+ *                 type: string
+ *                 example: "INS-001"
+ *               instrumentName:
+ *                 type: string
+ *                 example: "Alpha Platform"
+ *               type:
+ *                 type: string
+ *                 enum: [PRESSURE_ANOMALY, TEMPERATURE_ANOMALY, LEAKAGE, EQUIPMENT_FAILURE, SENSOR_MALFUNCTION]
+ *               severity:
+ *                 type: string
+ *                 enum: [WARNING, CRITICAL, FATAL]
+ *               description:
+ *                 type: string
+ *                 minLength: 10
+ *                 example: "Detected abnormal vibration on main pump unit during routine inspection."
+ *     responses:
+ *       201:
+ *         description: Manual incident reported successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Instrument not found
+ */
+incidentRouter.post(
+    "/report-manual",
+    protect,
+    checkRole(["Supervisor"]),
+    incidentController.reportManualIncident
+);
+
 // ── ENGINEER: Acknowledge ────────────────────────────────────────────────────
+
+/**
+ * @swagger
+ * /api/incidents/{id}/available-engineers:
+ *   get:
+ *     summary: Lấy danh sách Engineer khả dụng, ưu tiên theo dàn khoan và workload
+ *     tags: [Incidents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: MongoDB ObjectId của incident
+ *     responses:
+ *       200:
+ *         description: Danh sách Engineer với thứ tự ưu tiên
+ *       404:
+ *         description: Incident not found
+ */
+incidentRouter.get(
+    "/:id/available-engineers",
+    protect,
+    checkRole(["Supervisor"]),
+    incidentController.getAvailableEngineers
+);
+
+/**
+ * @swagger
+ * /api/incidents/{id}/assign-engineer:
+ *   post:
+ *     summary: Supervisor chỉ định Engineer xử lý incident (OPEN -> ACKNOWLEDGED)
+ *     tags: [Incidents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [engineerId]
+ *             properties:
+ *               engineerId:
+ *                 type: string
+ *                 description: MongoDB ObjectId of the Engineer to assign
+ *     responses:
+ *       200:
+ *         description: Engineer assigned, incident acknowledged
+ *       400:
+ *         description: Validation error or incident already has assigned engineer
+ *       404:
+ *         description: Incident or Engineer not found
+ */
+incidentRouter.post(
+    "/:id/assign-engineer",
+    protect,
+    checkRole(["Supervisor"]),
+    incidentController.assignEngineerToIncident
+);
 
 /**
  * @swagger

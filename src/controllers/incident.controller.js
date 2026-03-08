@@ -26,6 +26,18 @@ export const incidentController = {
         res.status(response.statusCode).json(response);
     },
 
+    async getAvailableEngineers(req, res, next) {
+        const result = await incidentService.getAvailableEngineers(req.params.id);
+        const response = responseSuccess(result, "Available engineers retrieved successfully");
+        res.status(response.statusCode).json(response);
+    },
+
+    async assignEngineerToIncident(req, res, next) {
+        const result = await incidentService.assignEngineerToIncident(req.params.id, req.body, req.user);
+        const response = responseSuccess(result, "Engineer assigned to incident successfully");
+        res.status(response.statusCode).json(response);
+    },
+
     async respondToIncident(req, res, next) {
         const result = await incidentService.respondToIncident(req.params.id, req.body, req.user);
         const response = responseSuccess(result, "Incident response recorded successfully");
@@ -35,6 +47,12 @@ export const incidentController = {
     async getActiveAlerts(req, res, next) {
         const result = await incidentService.getActiveAlerts();
         const response = responseSuccess(result, "Active alerts retrieved successfully");
+        res.status(response.statusCode).json(response);
+    },
+
+    async reportManualIncident(req, res, next) {
+        const result = await incidentService.reportManualIncident(req.body, req.user);
+        const response = responseSuccess(result, "Manual incident reported successfully", 201);
         res.status(response.statusCode).json(response);
     },
 };
