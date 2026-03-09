@@ -216,4 +216,97 @@ systemConfigRouter.get('/lockout-policy', protect, systemConfigController.getLoc
  */
 systemConfigRouter.put('/lockout-policy', protect, checkRole(['Admin']), systemConfigController.updateLockoutPolicy);
 
+/**
+ * @swagger
+ * /api/system-config/password-expiry-policy:
+ *   get:
+ *     summary: Lấy cấu hình chính sách hết hạn mật khẩu
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy password expiry policy thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 expiryDays:
+ *                   type: integer
+ *                   example: 90
+ *                 notifyDaysBefore:
+ *                   type: integer
+ *                   example: 7
+ *                 enabled:
+ *                   type: boolean
+ *                   example: true
+ */
+systemConfigRouter.get('/password-expiry-policy', protect, systemConfigController.getPasswordExpiryPolicy);
+
+/**
+ * @swagger
+ * /api/system-config/password-expiry-policy:
+ *   put:
+ *     summary: Cập nhật cấu hình chính sách hết hạn mật khẩu (Admin only)
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - expiryDays
+ *               - notifyDaysBefore
+ *               - enabled
+ *             properties:
+ *               expiryDays:
+ *                 type: integer
+ *                 minimum: 30
+ *                 maximum: 365
+ *                 example: 90
+ *               notifyDaysBefore:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 30
+ *                 example: 7
+ *               enabled:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Cập nhật password expiry policy thành công
+ */
+systemConfigRouter.put('/password-expiry-policy', protect, checkRole(['Admin']), systemConfigController.updatePasswordExpiryPolicy);
+
+/**
+ * @swagger
+ * /api/system-config/password-expiry-check:
+ *   post:
+ *     summary: Chạy kiểm tra password expiry ngay (Manual trigger - Admin only)
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Kiểm tra hoàn thành
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notified:
+ *                   type: integer
+ *                   example: 5
+ *                   description: Số users được notify về password sắp hết hạn
+ *                 expired:
+ *                   type: integer
+ *                   example: 2
+ *                   description: Số users có password đã hết hạn
+ */
+systemConfigRouter.post('/password-expiry-check', protect, checkRole(['Admin']), systemConfigController.checkPasswordExpiry);
+
 export default systemConfigRouter;

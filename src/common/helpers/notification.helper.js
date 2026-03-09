@@ -209,3 +209,37 @@ export const notifyInventoryDispatched = async (userId, warehouse, equipment, qu
         console.error('Error sending inventory dispatched notification:', error);
     }
 };
+
+export const notifyPasswordExpiring = async (userId, daysLeft) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Password Expiring Soon',
+                message: `Your password will expire in ${daysLeft} day(s). Please change your password to maintain account security.`,
+                type: 'WARNING',
+                category: 'SYSTEM',
+                link: '/profile/change-password',
+            },
+        });
+    } catch (error) {
+        console.error('Error sending password expiring notification:', error);
+    }
+};
+
+export const notifyPasswordExpired = async (userId) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Password Expired',
+                message: 'Your password has expired. You must change your password to continue using the system.',
+                type: 'ERROR',
+                category: 'SYSTEM',
+                link: '/profile/change-password',
+            },
+        });
+    } catch (error) {
+        console.error('Error sending password expired notification:', error);
+    }
+};

@@ -163,6 +163,28 @@ export const authService = {
     // Login thành công → reset failed attempts
     await resetFailedAttempts(clientIp);
 
+    const passwordExpiryPolicy = await systemConfigService.getPasswordExpiryPolicy();
+    
+    if (passwordExpiryPolicy.enabled) {
+      const lastPasswordChange = user.lastPasswordChangeAt;
+      const daysSinceChange = Math.floor((new Date() - new Date(lastPasswordChange)) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceChange >= passwordExpiryPolicy.expiryDays) {
+        throw new BadRequestException(
+          `Your password has expired (${daysSinceChange} days old). Please reset your password to continue.`
+        );
+      }
+
+      // Cảnh báo nếu sắp hết hạn (trong 7 ngày)
+      const daysUntilExpiry = passwordExpiryPolicy.expiryDays - daysSinceChange;
+      if (daysUntilExpiry <= passwordExpiryPolicy.notifyDaysBefore && daysUntilExpiry > 0) {
+        user.passwordExpiryWarning = {
+          daysLeft: daysUntilExpiry,
+          message: `Your password will expire in ${daysUntilExpiry} day(s). Please change your password soon.`
+        };
+      }
+    }
+
     // Kiểm tra xem có device nào đang online không
     const userDeviceMap = getUserDeviceMap();
     const existingDevice = userDeviceMap.get(user.id);
@@ -213,6 +235,14 @@ export const authService = {
     });
     // tạo token
     const tokens = tokenService.createTokens(user.id);
+
+    // Thêm warning về password expiry nếu có
+    if (user.passwordExpiryWarning) {
+      return {
+        ...tokens,
+        passwordExpiryWarning: user.passwordExpiryWarning,
+      };
+    }
 
     return tokens;
   },
@@ -278,8 +308,38 @@ export const authService = {
       }
     });
 
+    const passwordExpiryPolicy = await systemConfigService.getPasswordExpiryPolicy();
+    
+    if (passwordExpiryPolicy.enabled) {
+      const lastPasswordChange = user.lastPasswordChangeAt || user.createdAt;
+      const daysSinceChange = Math.floor((new Date() - new Date(lastPasswordChange)) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceChange >= passwordExpiryPolicy.expiryDays) {
+        throw new BadRequestException(
+          `Your password has expired (${daysSinceChange} days old). Please reset your password to continue.`
+        );
+      }
+
+      // Cảnh báo nếu sắp hết hạn
+      const daysUntilExpiry = passwordExpiryPolicy.expiryDays - daysSinceChange;
+      if (daysUntilExpiry <= passwordExpiryPolicy.notifyDaysBefore && daysUntilExpiry > 0) {
+        user.passwordExpiryWarning = {
+          daysLeft: daysUntilExpiry,
+          message: `Your password will expire in ${daysUntilExpiry} day(s). Please change your password soon.`
+        };
+      }
+    }
+
     // Tạo tokens
     const tokens = tokenService.createTokens(user.id);
+
+    // Thêm warning về password expiry nếu có
+    if (user.passwordExpiryWarning) {
+      return {
+        ...tokens,
+        passwordExpiryWarning: user.passwordExpiryWarning,
+      };
+    }
 
     return tokens;
   },
@@ -475,6 +535,7 @@ export const authService = {
         password: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpires: null,
+        lastPasswordChangeAt: new Date(), // cập nhật thời gian đổi mật khẩu
       },
     });
 

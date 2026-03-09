@@ -3,6 +3,7 @@ import { BadRequestException } from '../common/helpers/exception.helper.js';
 import { incidentService } from './incident.service.js';
 import { notificationService } from './notification.service.js';
 import { getIO } from '../common/socket/init.socket.js';
+import { notifyPasswordExpiring, notifyPasswordExpired } from '../common/helpers/notification.helper.js';
 
 const parseNumericValue = (val) => {
   if (val == null) return null;
@@ -427,8 +428,6 @@ export const systemConfigService = {
     };
   },
 
-  // ============== LOCKOUT POLICY METHODS ==============
-  
   async getLockoutPolicy() {
     const config = await prisma.systemConfig.findUnique({
       where: { key: 'LOCKOUT_POLICY' },
@@ -471,5 +470,134 @@ export const systemConfigService = {
     });
 
     return JSON.parse(config.value);
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PASSWORD EXPIRY POLICY
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async getPasswordExpiryPolicy() {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'PASSWORD_EXPIRY_POLICY' },
+    });
+
+    if (!config) {
+      return {
+        expiryDays: 90,
+        notifyDaysBefore: 7,
+        enabled: true,
+      };
+    }
+
+    return JSON.parse(config.value);
+  },
+
+  async updatePasswordExpiryPolicy(data, userId) {
+    const { expiryDays, notifyDaysBefore, enabled } = data;
+
+    // Validation
+    if (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 365) {
+      throw new BadRequestException('Expiry days must be between 1 and 365');
+    }
+
+    if (!Number.isInteger(notifyDaysBefore) || notifyDaysBefore < 1 || notifyDaysBefore > 30) {
+      throw new BadRequestException('Notify days before must be between 1 and 30');
+    }
+
+    if (typeof enabled !== 'boolean') {
+      throw new BadRequestException('Enabled must be true or false');
+    }
+
+    const config = await prisma.systemConfig.upsert({
+      where: { key: 'PASSWORD_EXPIRY_POLICY' },
+      update: { 
+        value: JSON.stringify({ expiryDays, notifyDaysBefore, enabled }), 
+        updatedBy: userId
+      },
+      create: {
+        key: 'PASSWORD_EXPIRY_POLICY',
+        value: JSON.stringify({ expiryDays, notifyDaysBefore, enabled }),
+        description: 'Cấu hình chính sách hết hạn mật khẩu',
+        updatedBy: userId,
+      },
+    });
+
+    return JSON.parse(config.value);
+  },
+
+  /**
+   * Check passwords expiring soon and send notifications
+   * Called by scheduled job (e.g., daily at 9 AM)
+   */
+  async checkAndNotifyPasswordExpiry() {
+    const policy = await this.getPasswordExpiryPolicy();
+    
+    if (!policy.enabled) {
+      console.log('[PasswordExpiry] Policy is disabled, skipping check');
+      return { notified: 0, expired: 0 };
+    }
+
+    const now = new Date();
+    const expiryThreshold = new Date(now);
+    expiryThreshold.setDate(expiryThreshold.getDate() - policy.expiryDays);
+
+    const notifyThreshold = new Date(now);
+    notifyThreshold.setDate(notifyThreshold.getDate() - (policy.expiryDays - policy.notifyDaysBefore));
+
+    // Find users whose password will expire soon (within notifyDaysBefore days)
+    const usersToNotify = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        lastPasswordChangeAt: {
+          lte: notifyThreshold,
+          gt: expiryThreshold,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        lastPasswordChangeAt: true,
+      },
+    });
+
+    // Find users whose password has already expired
+    const expiredUsers = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        lastPasswordChangeAt: {
+          lte: expiryThreshold,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        lastPasswordChangeAt: true,
+      },
+    });
+
+    // Send notifications for expiring passwords
+    for (const user of usersToNotify) {
+      const lastChange = new Date(user.lastPasswordChangeAt || user.createdAt);
+      const expiryDate = new Date(lastChange);
+      expiryDate.setDate(expiryDate.getDate() + policy.expiryDays);
+      
+      const daysLeft = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+      await notifyPasswordExpiring(user.id, daysLeft);
+    }
+
+    // Send notifications for expired passwords
+    for (const user of expiredUsers) {
+      await notifyPasswordExpired(user.id);
+    }
+
+    console.log(`[PasswordExpiry] Notified ${usersToNotify.length} users about expiring passwords, ${expiredUsers.length} expired`);
+    
+    return { 
+      notified: usersToNotify.length, 
+      expired: expiredUsers.length 
+    };
   },
 };
