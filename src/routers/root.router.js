@@ -12,6 +12,7 @@ import { oilTransactionRouter } from './oilTransaction.router.js';
 import notificationRouter from './notification.router.js';
 import systemConfigRouter from './systemConfig.router.js';
 import incidentRouter from './incident.router.js';
+import dashboardRouter from './dashboard.router.js';
 
 const rootRouter = express.Router()
 
@@ -28,6 +29,7 @@ rootRouter.use("/oil-transactions", oilTransactionRouter)
 rootRouter.use("/notifications", notificationRouter)
 rootRouter.use("/system-config", systemConfigRouter)
 rootRouter.use("/incidents", incidentRouter)
+rootRouter.use("/dashboard", dashboardRouter)
 
 
 export default rootRouter
