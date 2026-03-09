@@ -40,6 +40,11 @@ export const protect = async (req, res, next) => {
         throw new UnauthorizedException("Cannot find user");
     }
 
+    // Check if user account is active
+    if (!userExits.isActive || userExits.status === 'INACTIVE') {
+        throw new UnauthorizedException("Your account has been deactivated. Please contact the administrator.");
+    }
+
     // console.log({ authorization, type, token, userId, userExits });
 
     req.user = userExits

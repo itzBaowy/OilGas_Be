@@ -44,6 +44,12 @@ export const initGoogleStrategy = () => {
                     return;
                 }
 
+                // Check if user is active
+                if (!userExist.isActive || userExist.status === 'INACTIVE') {
+                    cb(null, false, { message: "Your account has been deactivated. Please contact the administrator." });
+                    return;
+                }
+
                 // Nếu user tồn tại → Cho phép đăng nhập
                 // thành công cb(null, user);
                 cb(null, userExist);
