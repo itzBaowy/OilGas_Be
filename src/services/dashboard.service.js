@@ -18,6 +18,7 @@ export const dashboardService = {
       totalIncidents,
       resolvedIncidents,
       systemConfig,
+      engineerRole,
     ] = await Promise.all([
       // Equipment grouped by status
       prisma.equipment.findMany({
@@ -56,6 +57,8 @@ export const dashboardService = {
       prisma.incident.count({ where: { status: "RESOLVED" } }),
       // System config for thresholds
       prisma.systemConfig.findUnique({ where: { key: "INCIDENT_THRESHOLDS" } }),
+      // Find the Engineer role
+      prisma.role.findFirst({ where: { name: { equals: "engineer", mode: "insensitive" } } }),
     ]);
 
     // --- Equipment status breakdown ---
@@ -83,6 +86,50 @@ export const dashboardService = {
         thresholds = JSON.parse(systemConfig.value);
       } catch {
         // keep defaults
+      }
+    }
+
+    // --- Engineer resources ---
+    let totalEngineers = 0;
+    let engineersOnRig = 0;
+    let engineersOnIncident = 0;
+
+    if (engineerRole) {
+      // Total active engineers
+      totalEngineers = await prisma.user.count({
+        where: { roleId: engineerRole.id, status: "ACTIVE" },
+      });
+
+      // Engineers assigned to active instruments (on-rig)
+      const assignedEngineerIds = await prisma.instrumentEngineer.findMany({
+        where: {
+          instrument: { isDeleted: false, status: { in: ["Active", "Maintenance"] } },
+        },
+        select: { engineerId: true },
+        distinct: ["engineerId"],
+      });
+      engineersOnRig = assignedEngineerIds.length;
+
+      // Engineers currently handling non-resolved incidents
+      // (engineers who acknowledged or are working on active incidents)
+      const activeIncidentEngineerIds = await prisma.incident.findMany({
+        where: {
+          status: { in: ["ACKNOWLEDGED", "IN_PROGRESS"] },
+          acknowledgedById: { not: null },
+        },
+        select: { acknowledgedById: true },
+        distinct: ["acknowledgedById"],
+      });
+      // Filter to only engineer-role users
+      if (activeIncidentEngineerIds.length > 0) {
+        const incidentUserIds = activeIncidentEngineerIds.map((i) => i.acknowledgedById);
+        engineersOnIncident = await prisma.user.count({
+          where: {
+            id: { in: incidentUserIds },
+            roleId: engineerRole.id,
+            status: "ACTIVE",
+          },
+        });
       }
     }
 
@@ -145,6 +192,11 @@ export const dashboardService = {
       totalIncidents,
       resolvedIncidents,
       openIncidents: totalIncidents - resolvedIncidents,
+
+      // Engineer resources
+      totalEngineers,
+      engineersOnRig,
+      engineersOnIncident,
     };
   },
 };
