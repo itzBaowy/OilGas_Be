@@ -15,7 +15,6 @@ import { logPasswordChange } from '../common/helpers/audit.helper.js';
 dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
-// ============== IP LOCKOUT HELPERS ==============
 const checkIpLockout = async (ipAddress) => {
   const attempt = await prisma.loginAttempt.findUnique({
     where: { ipAddress },
@@ -64,11 +63,9 @@ const recordFailedAttempt = async (ipAddress, email) => {
       lastAttemptAt: new Date(),
     },
   });
-
-  const newFailedCount = attempt.failedAttempts + 1;
-
+  
   // Nếu vượt quá số lần cho phép, khóa IP
-  if (newFailedCount >= maxFailedAttempts) {
+  if (attempt.failedAttempts >= maxFailedAttempts) {
     const lockedUntil = new Date(Date.now() + lockoutDurationMinutes * 60 * 1000);
     await prisma.loginAttempt.update({
       where: { ipAddress },
@@ -79,8 +76,8 @@ const recordFailedAttempt = async (ipAddress, email) => {
       `Too many failed login attempts. Your IP address has been locked for ${lockoutDurationMinutes} minutes.`
     );
   }
-
-  const remainingAttempts = maxFailedAttempts - newFailedCount;
+  
+  const remainingAttempts = maxFailedAttempts - attempt.failedAttempts;
   throw new BadRequestException(
     `Wrong password. You have ${remainingAttempts} attempt(s) remaining before your IP is locked.`
   );
