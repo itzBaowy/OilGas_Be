@@ -151,7 +151,7 @@ roleRouter.post("/", protect, checkPermission(['CREATE_ROLE', 'ALL']), roleContr
  *       403:
  *         description: Không có quyền truy cập (cần EDIT_ROLE)
  */
-roleRouter.put("/:roleId", protect, checkPermission(['EDIT_ROLE', 'ALL']), roleController.updateRole);
+roleRouter.put("/:roleId", protect, checkPermission(['EDIT_ROLE', 'UPDATE_ROLE', 'ALL']), roleController.updateRole);
 
 /**
  * @swagger
@@ -213,7 +213,7 @@ roleRouter.delete("/:roleId", protect, checkPermission(['DELETE_ROLE', 'ALL']), 
  *       403:
  *         description: Không có quyền truy cập (cần EDIT_ROLE)
  */
-roleRouter.post("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE', 'ALL']), roleController.addPermission);
+roleRouter.post("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE', 'UPDATE_ROLE', 'ALL']), roleController.addPermission);
 
 /**
  * @swagger
@@ -249,7 +249,7 @@ roleRouter.post("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE', '
  *       403:
  *         description: Không có quyền truy cập (cần EDIT_ROLE)
  */
-roleRouter.delete("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE', 'ALL']), roleController.removePermission);
+roleRouter.delete("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE', 'UPDATE_ROLE', 'ALL']), roleController.removePermission);
 
 /**
  * @swagger
@@ -287,6 +287,6 @@ roleRouter.delete("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE',
  *       403:
  *         description: Không có quyền truy cập (cần EDIT_ROLE)
  */
-roleRouter.put("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE', 'ALL']), roleController.updatePermissions);
+roleRouter.put("/:roleId/permissions", protect, checkPermission(['EDIT_ROLE', 'UPDATE_ROLE', 'ALL']), roleController.updatePermissions);
 
 export default roleRouter;

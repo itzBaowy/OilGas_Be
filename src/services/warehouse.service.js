@@ -83,7 +83,7 @@ export const warehouseService = {
 
     // Tạo warehouse mới
     async createWarehouse(data, userId) {
-        const { name, location, capacity, description, status } = data;
+        const { name, location, capacity, oilCapacity, description, status } = data;
 
         // Validate required fields
         if (!name || !location || capacity === undefined) {
@@ -123,6 +123,8 @@ export const warehouseService = {
                 name,
                 location,
                 capacity: parseInt(capacity),
+                oilCapacity: oilCapacity ? parseFloat(oilCapacity) : 50000,
+                currentOilVolume: 0,
                 description: description || null,
                 status: status || 'ACTIVE',
                 createdBy: userId || null
@@ -134,7 +136,7 @@ export const warehouseService = {
 
     // Cập nhật warehouse
     async updateWarehouse(warehouseId, data, userId) {
-        const { name, location, capacity, description, status } = data;
+        const { name, location, capacity, oilCapacity, description, status } = data;
 
         // Check warehouse exists - Kiểm tra warehouse có tồn tại không
         const existingWarehouse = await prisma.warehouse.findUnique({
@@ -178,6 +180,7 @@ export const warehouseService = {
         if (capacity !== undefined) updateData.capacity = parseInt(capacity);
         if (description !== undefined) updateData.description = description;
         if (status !== undefined) updateData.status = status;
+        if (oilCapacity !== undefined) updateData.oilCapacity = parseFloat(oilCapacity);
 
         // Save old/new values for audit log (optional enhancement)
         const oldValues = {

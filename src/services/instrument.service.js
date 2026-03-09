@@ -188,6 +188,19 @@ export const instrumentService = {
             assignedAt: true,
           },
         },
+        equipments: {
+          where: { isDeleted: false },
+          select: {
+            id: true,
+            equipmentId: true,
+            name: true,
+            type: true,
+            status: true,
+            specifications: true,
+            isAutoExtracting: true,
+            autoExtractStartedAt: true,
+          },
+        },
       },
     });
 
@@ -195,9 +208,13 @@ export const instrumentService = {
       throw new NotFoundException("Instrument not found");
     }
 
+    // Find Oil Pump equipment
+    const oilPump = instrument.equipments.find((eq) => eq.type === "Oil Pump") || null;
+
     // Format response
     return {
       ...instrument,
+      oilPump,
       assignedEngineers: instrument.assignedEngineers.map((eng) => ({
         id: eng.engineerId,
         name: eng.engineerName,
@@ -218,6 +235,8 @@ export const instrumentService = {
       installDate,
       status = "Active",
       description,
+      tankCapacity,
+      oilType,
     } = req.body;
 
     // Validate data using helper
@@ -239,6 +258,8 @@ export const instrumentService = {
         status,
         description,
         isDeleted: false,
+        ...(tankCapacity !== undefined && { tankCapacity: parseFloat(tankCapacity) }),
+        ...(oilType !== undefined && { oilType }),
       },
       include: {
         assignedEngineers: true,
@@ -264,6 +285,8 @@ export const instrumentService = {
       description,
       lastMaintenanceDate,
       nextMaintenanceDate,
+      tankCapacity,
+      oilType,
     } = req.body;
 
     // Check if instrument exists
@@ -294,6 +317,9 @@ export const instrumentService = {
       updateData.lastMaintenanceDate = parsedLastMaintenanceDate;
     if (nextMaintenanceDate !== undefined)
       updateData.nextMaintenanceDate = parsedNextMaintenanceDate;
+    if (tankCapacity !== undefined)
+      updateData.tankCapacity = parseFloat(tankCapacity);
+    if (oilType !== undefined) updateData.oilType = oilType;
 
     // Update instrument
     const updatedInstrument = await prisma.instrument.update({

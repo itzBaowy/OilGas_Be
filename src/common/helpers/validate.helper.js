@@ -53,7 +53,7 @@ export function validateEmail(email) {
 //Equipment validation helpers
 
 // Valid equipment types - Predefined dropdown values
-const EQUIPMENT_TYPES = ["Pump", "Valve", "Compressor", "Sensor"];
+const EQUIPMENT_TYPES = ["Pump", "Valve", "Compressor", "Sensor", "Oil Pump"];
 
 // Valid equipment statuses
 const EQUIPMENT_STATUSES = ["Active", "Inactive", "Maintenance"];
