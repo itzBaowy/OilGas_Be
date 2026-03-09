@@ -968,6 +968,21 @@ async function main() {
       description: "Cấu hình chính sách khóa IP sau nhiều lần đăng nhập thất bại",
     },
   });
+
+  await prisma.systemConfig.upsert({
+    where: { key: "PASSWORD_EXPIRY_POLICY" },
+    update: {},
+    create: {
+      key: "PASSWORD_EXPIRY_POLICY",
+      value: JSON.stringify({
+        expiryDays: 90,
+        notifyDaysBefore: 7,
+        enabled: true,
+      }),
+      description: "Cấu hình chính sách hết hạn mật khẩu",
+    },
+  });
+
   console.log("✅ Seed SystemConfig thành công!");
 
   console.log("🎉 Seed tất cả dữ liệu thành công!");

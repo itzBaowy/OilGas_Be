@@ -12,6 +12,7 @@ import { swaggerOptions } from './src/common/swagger/swagger.config.js';
 import { createServer } from 'http';
 import { initSocket } from './src/common/socket/init.socket.js';
 import { incidentService } from './src/services/incident.service.js';
+import { startPasswordExpiryJob } from './src/jobs/passwordExpiry.job.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -59,4 +60,7 @@ httpServer.listen(PORT, () => {
   // Startup check: sửa Instrument kẹt Maintenance khi không có incident active
   incidentService.reconcileInstrumentStatuses()
     .catch((err) => console.error('[StartupCheck] Failed:', err.message));
+
+  // Start password expiry check job (runs daily at 9 AM)
+  startPasswordExpiryJob();
 });

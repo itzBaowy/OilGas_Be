@@ -37,4 +37,22 @@ export const systemConfigController = {
     const response = responseSuccess(data, 'Lockout policy updated successfully');
     res.status(response.statusCode).json(response);
   },
+
+  async getPasswordExpiryPolicy(req, res) {
+    const data = await systemConfigService.getPasswordExpiryPolicy();
+    const response = responseSuccess(data, 'Password expiry policy retrieved successfully');
+    res.status(response.statusCode).json(response);
+  },
+
+  async updatePasswordExpiryPolicy(req, res) {
+    const data = await systemConfigService.updatePasswordExpiryPolicy(req.body, req.user.id);
+    const response = responseSuccess(data, 'Password expiry policy updated successfully');
+    res.status(response.statusCode).json(response);
+  },
+
+  async checkPasswordExpiry(req, res) {
+    const data = await systemConfigService.checkAndNotifyPasswordExpiry();
+    const response = responseSuccess(data, 'Password expiry check completed successfully');
+    res.status(response.statusCode).json(response);
+  },
 };
