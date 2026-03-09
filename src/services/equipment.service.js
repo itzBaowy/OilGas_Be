@@ -12,13 +12,12 @@ export const equipmentService = {
     try {
       const updatedSequence = await prisma.sequence.upsert({
         where: { name: "equipment" },
-        update: { value: { increment: 1 } }, // Nếu có rồi thì +1
-        create: { name: "equipment", value: 1 }, // Nếu chưa có thì tạo mới bằng 1
+        update: { value: { increment: 1 } }, 
+        create: { name: "equipment", value: 1 },
       });
 
       const nextValue = updatedSequence.value;
 
-      // Trả về định dạng EQ-001, EQ-002...
       return `EQ-${String(nextValue).padStart(3, "0")}`;
     } catch (error) {
       throw new Error(`Failed to generate custom ID: ${error.message}`);
@@ -75,13 +74,13 @@ export const equipmentService = {
         equipmentId,
         name,
         serialNumber,
-        type: normalizedType, // Use normalized type (Pump, Valve, Compressor, Sensor, or Other)
+        type: normalizedType, 
         model,
         status: status,
         location,
         manufacturer,
         installDate: parsedInstallDate,
-        expiredDate: expiredDate ? new Date(expiredDate) : parsedInstallDate, // Default to installDate if not provided
+        expiredDate: expiredDate ? new Date(expiredDate) : parsedInstallDate, 
         lastMaintenanceDate: lastMaintenanceDate
           ? new Date(lastMaintenanceDate)
           : null,
@@ -106,7 +105,6 @@ export const equipmentService = {
     const limitNum = Math.max(1, parseInt(limit));
     const skip = (pageNum - 1) * limitNum;
 
-    // Thêm điều kiện isDeleted
     const where = { isDeleted: false };
     if (type) {
       where.type = type;
@@ -264,19 +262,13 @@ export const equipmentService = {
   async getAllMaintenanceHistory(req) {
     const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
-    // Override filters for exact match (type, status)
-    // buildQueryPrisma converts strings to { contains }, but we need exact match for enum fields
     if (where.type && typeof where.type === "object" && where.type.contains) {
       where.type = where.type.contains;
     }
     if (where.status && typeof where.status === "object" && where.status.contains) {
       where.status = where.status.contains;
     }
-    // Override description filter — search by partial match (already contains from buildQueryPrisma)
-    // No additional override needed for description
 
-    // Handle equipmentId filter separately (not from JSON filters)
-    // FE sends equipmentId as custom ID (EQ-001), need to lookup ObjectId
     if (req.query.equipmentId) {
       const equipment = await prisma.equipment.findUnique({
         where: { equipmentId: req.query.equipmentId },
@@ -284,7 +276,6 @@ export const equipmentService = {
       if (equipment) {
         where.equipmentId = equipment.id; // Use ObjectId for exact match
       } else {
-        // Equipment not found, return empty result
         return {
           page: page,
           pageSize: pageSize,
@@ -352,7 +343,6 @@ export const equipmentService = {
   },
 
   async getMaintenanceHistory(equipmentId, queryParams = {}) {
-    // First, get the equipment by equipmentId (EQ-001, EQ-002, etc.) to get the ObjectId
     const equipment = await prisma.equipment.findUnique({
       where: { equipmentId },
     });
@@ -363,7 +353,7 @@ export const equipmentService = {
 
     // Build where clause with optional date range
     const whereClause = {
-      equipmentId: equipment.id, // Use ObjectId here
+      equipmentId: equipment.id,
     };
 
     // Add date range filter if provided
@@ -427,18 +417,6 @@ export const equipmentService = {
     return uniqueTypes;
   },
 
-  /**
-   * Schedule maintenance for an equipment
-   * SRS 3.2.2.6b - Maintenance Assign (Schedule)
-   *
-   * @param {Object} req - Express request
-   * @param {string} req.params.equipmentId - Equipment custom ID (EQ-001)
-   * @param {string} req.body.engineerId - User ObjectId of the responsible engineer
-   * @param {string} req.body.type - Maintenance type
-   * @param {string} req.body.date - Scheduled date (ISO string or YYYY-MM-DD)
-   * @param {string} [req.body.description] - Optional description
-   * @param {number} [req.body.cost] - Optional estimated cost
-   */
   async createMaintenanceSchedule(req) {
     const { equipmentId } = req.params;
     const { engineerId, type, date, description, cost } = req.body;
@@ -528,7 +506,7 @@ export const equipmentService = {
       });
     }
 
-    // --- Send notification to the assigned engineer (non-blocking) ---
+    // Send notification to the assigned engineer (non-blocking) 
     notifyMaintenanceScheduled(
       engineerId,
       equipment,
@@ -540,23 +518,11 @@ export const equipmentService = {
     return maintenanceRecord;
   },
 
-  /**
-   * Update maintenance record status with state machine validation
-   * Valid transitions:
-   *   Scheduled   → In Progress | Cancelled
-   *   In Progress → Completed   | Cancelled
-   *
-   * @param {Object} req - Express request
-   * @param {string} req.params.id - MaintenanceHistory ObjectId
-   * @param {string} req.body.status - New status
-   * @param {number} [req.body.cost] - Optional cost (useful when completing)
-   * @param {string} [req.body.notes] - Optional completion notes
-   */
   async updateMaintenanceStatus(req) {
     const { id } = req.params;
     const { status, cost, notes } = req.body;
 
-    // --- Validate required fields ---
+    //Validate required fields
     if (!status || !status.trim()) {
       throw new BadRequestException("Status is required");
     }
@@ -568,7 +534,7 @@ export const equipmentService = {
       );
     }
 
-    // --- Find maintenance record ---
+    //Find maintenance record 
     const record = await prisma.maintenanceHistory.findUnique({
       where: { id },
       include: {
@@ -579,7 +545,7 @@ export const equipmentService = {
       throw new NotFoundException("Maintenance record not found");
     }
 
-    // --- Authorization: check if user can update this record ---
+    // Authorization: check if user can update this record
     const currentUser = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: { role: true },
@@ -597,7 +563,7 @@ export const equipmentService = {
       );
     }
 
-    // --- State machine: validate transition ---
+    // State machine: validate transition
     const allowedTransitions = {
       Scheduled: ["In Progress", "Cancelled"],
       "In Progress": ["Completed", "Cancelled"],
@@ -615,7 +581,7 @@ export const equipmentService = {
       );
     }
 
-    // --- Build update data ---
+    // Build update data 
     const updateData = { status };
 
     // Allow updating cost when completing
@@ -630,7 +596,7 @@ export const equipmentService = {
         : `[${status}] ${notes.trim()}`;
     }
 
-    // --- Update the record ---
+    // Update the record 
     const updatedRecord = await prisma.maintenanceHistory.update({
       where: { id },
       data: updateData,
@@ -644,13 +610,13 @@ export const equipmentService = {
       },
     });
 
-    // --- Side effects on Completed ---
+    // Side effects on Completed
     if (status === "Completed" && record.equipment) {
       await prisma.equipment.update({
         where: { id: record.equipmentId },
         data: {
           lastMaintenanceDate: new Date(),
-          status: "Active", // Equipment back to active after maintenance
+          status: "Active",
         },
       });
     }

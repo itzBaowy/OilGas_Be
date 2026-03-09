@@ -483,15 +483,9 @@ export const instrumentService = {
     return { message: "Engineer assignment removed successfully" };
   },
 
-  /**
-   * Get all instrument maintenance history with filters and pagination
-   * Similar to equipment maintenance history
-   */
   async getAllInstrumentMaintenanceHistory(req) {
     const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
-    // Override filters for exact match (type, status)
-    // buildQueryPrisma converts strings to contains, but we need exact match for these fields
     if (where.type && typeof where.type === "object" && where.type.contains) {
       where.type = where.type.contains;
     }
@@ -499,19 +493,13 @@ export const instrumentService = {
       where.status = where.status.contains;
     }
 
-    // Only show records that belong to an instrument
     where.instrumentId = { not: null };
 
-    // Special handling for instrumentId filter from query params
-    // instrumentId in filters is custom ID (INS-001), not ObjectId
-    // Need to filter through instrument relation
     if (req.query.instrumentId) {
       const customInstrumentId = req.query.instrumentId;
-      // Use nested where for instrument relation
       where.instrument = where.instrument || {};
       where.instrument.instrumentId = customInstrumentId;
-      delete where.instrumentId; // Remove any direct filter, re-add the not-null check
-      // Ensure we still only get records with instruments
+      delete where.instrumentId;
     }
 
     // Add date range filter if provided
@@ -534,7 +522,6 @@ export const instrumentService = {
     }
 
     // Search across multiple fields using OR condition
-    // Supports searching in: description, performedBy, instrument name
     if (req.query.search) {
       const searchTerm = req.query.search;
       const searchConditions = [
@@ -601,7 +588,7 @@ export const instrumentService = {
     // Map to include instrumentId at top level (custom ID, not ObjectId)
     const items = maintenanceHistory.map(item => ({
       ...item,
-      instrumentId: item.instrument?.instrumentId, // Use custom ID (INS-001) instead of ObjectId
+      instrumentId: item.instrument?.instrumentId, 
     }));
 
     return {
@@ -617,7 +604,6 @@ export const instrumentService = {
    * Get maintenance history for a specific instrument
    */
   async getInstrumentMaintenanceHistory(instrumentId, queryParams = {}) {
-    // First, get the instrument by instrumentId (INS-001, INS-002, etc.) to get the ObjectId
     const instrument = await prisma.instrument.findUnique({
       where: { instrumentId },
     });
@@ -626,9 +612,8 @@ export const instrumentService = {
       throw new NotFoundException("Instrument not found");
     }
 
-    // Build where clause — get maintenance records linked to this instrument
     const whereClause = {
-      instrumentId: instrument.id, // Use ObjectId here
+      instrumentId: instrument.id, 
     };
 
     // Add date range filter if provided
@@ -668,11 +653,8 @@ export const instrumentService = {
     return maintenanceHistory;
   },
 
-  /**
-   * Get distinct maintenance types for instruments
-   */
+
   async getInstrumentMaintenanceTypes() {
-    // Return predefined maintenance types (matching seed data)
     const maintenanceTypes = [
       "Preventive",
       "Corrective",
@@ -684,9 +666,6 @@ export const instrumentService = {
     return maintenanceTypes;
   },
 
-  /**
-   * Get distinct maintenance statuses for instruments
-   */
   async getInstrumentMaintenanceStatuses() {
     const maintenanceStatuses = [
       "Completed",
@@ -698,11 +677,6 @@ export const instrumentService = {
     return maintenanceStatuses;
   },
 
-  /**
-   * Get maintenance records GROUPED by Instrument (for Accordion view)
-   * Returns groups with instrument info, summary stats, and nested records
-   * @param {Object} queryParams - { type, status, startDate, endDate, search }
-   */
   async getMaintenanceGrouped(queryParams = {}) {
     const { type, status, startDate, endDate, search } = queryParams;
 
@@ -782,7 +756,7 @@ export const instrumentService = {
       if (!groupsMap.has(instrumentId)) {
         groupsMap.set(instrumentId, {
           instrument: {
-            id: record.instrument.instrumentId, // Use custom ID (INS-001)
+            id: record.instrument.instrumentId, 
             name: record.instrument.name,
             type: record.instrument.type,
             location: record.instrument.location,

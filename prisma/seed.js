@@ -569,12 +569,7 @@ async function main() {
     "TLP Design",
   ];
   const instrumentStatuses = [
-    "Active",
-    "Active",
-    "Active",
     "Maintenance",
-    "Active",
-    "Active",
     "Inactive",
     "Active",
   ];
