@@ -157,4 +157,63 @@ systemConfigRouter.post('/reset', protect, checkRole(['Admin']), systemConfigCon
  */
 systemConfigRouter.get('/scan', protect, systemConfigController.scanCurrentViolations);
 
+/**
+ * @swagger
+ * /api/system-config/lockout-policy:
+ *   get:
+ *     summary: Lấy cấu hình chính sách khóa IP
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy lockout policy thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 maxFailedAttempts:
+ *                   type: integer
+ *                   example: 5
+ *                 lockoutDurationMinutes:
+ *                   type: integer
+ *                   example: 15
+ */
+systemConfigRouter.get('/lockout-policy', protect, systemConfigController.getLockoutPolicy);
+
+/**
+ * @swagger
+ * /api/system-config/lockout-policy:
+ *   put:
+ *     summary: Cập nhật cấu hình chính sách khóa IP (Admin only)
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - maxFailedAttempts
+ *               - lockoutDurationMinutes
+ *             properties:
+ *               maxFailedAttempts:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 example: 5
+ *               lockoutDurationMinutes:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 60
+ *                 example: 15
+ *     responses:
+ *       200:
+ *         description: Cập nhật lockout policy thành công
+ */
+systemConfigRouter.put('/lockout-policy', protect, checkRole(['Admin']), systemConfigController.updateLockoutPolicy);
+
 export default systemConfigRouter;

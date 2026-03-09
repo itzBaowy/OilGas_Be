@@ -426,4 +426,50 @@ export const systemConfigService = {
       totalViolations: violatingIncidents.length + equipmentViolations.length,
     };
   },
+
+  // ============== LOCKOUT POLICY METHODS ==============
+  
+  async getLockoutPolicy() {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'LOCKOUT_POLICY' },
+    });
+
+    if (!config) {
+      return {
+        maxFailedAttempts: 5,
+        lockoutDurationMinutes: 15,
+      };
+    }
+
+    return JSON.parse(config.value);
+  },
+
+  async updateLockoutPolicy(data, userId) {
+    const { maxFailedAttempts, lockoutDurationMinutes } = data;
+
+    // Validation
+    if (!Number.isInteger(maxFailedAttempts) || maxFailedAttempts < 1 || maxFailedAttempts > 10) {
+      throw new BadRequestException('Max failed attempts must be between 1 and 10');
+    }
+
+    if (!Number.isInteger(lockoutDurationMinutes) || lockoutDurationMinutes < 1 || lockoutDurationMinutes > 60) {
+      throw new BadRequestException('Lockout duration must be between 1 and 60 minutes');
+    }
+
+    const config = await prisma.systemConfig.upsert({
+      where: { key: 'LOCKOUT_POLICY' },
+      update: { 
+        value: JSON.stringify({ maxFailedAttempts, lockoutDurationMinutes }), 
+        updatedBy: userId 
+      },
+      create: {
+        key: 'LOCKOUT_POLICY',
+        value: JSON.stringify({ maxFailedAttempts, lockoutDurationMinutes }),
+        description: 'Cấu hình chính sách khóa IP sau nhiều lần đăng nhập thất bại',
+        updatedBy: userId,
+      },
+    });
+
+    return JSON.parse(config.value);
+  },
 };

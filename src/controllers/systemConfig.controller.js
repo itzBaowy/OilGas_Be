@@ -25,4 +25,16 @@ export const systemConfigController = {
     const response = responseSuccess(data, 'Violation scan completed successfully');
     res.status(response.statusCode).json(response);
   },
+
+  async getLockoutPolicy(req, res) {
+    const data = await systemConfigService.getLockoutPolicy();
+    const response = responseSuccess(data, 'Lockout policy retrieved successfully');
+    res.status(response.statusCode).json(response);
+  },
+
+  async updateLockoutPolicy(req, res) {
+    const data = await systemConfigService.updateLockoutPolicy(req.body, req.user.id);
+    const response = responseSuccess(data, 'Lockout policy updated successfully');
+    res.status(response.statusCode).json(response);
+  },
 };

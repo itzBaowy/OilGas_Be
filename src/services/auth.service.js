@@ -4,6 +4,7 @@ import { tokenService } from './token.service.js';
 import { BadRequestException, UnauthorizedException } from "../common/helpers/exception.helper.js";
 import { getTokenFromHeader } from '../common/helpers/function.helper.js';
 import { emailService } from './email.service.js';
+import { systemConfigService } from './systemConfig.service.js';
 import { validatePassword, validateEmail } from '../common/helpers/validate.helper.js';
 import { UAParser } from 'ua-parser-js';
 import requestIp from 'request-ip';
@@ -13,6 +14,87 @@ import { getUserDeviceMap } from '../common/socket/init.socket.js';
 import { logPasswordChange } from '../common/helpers/audit.helper.js';
 dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL;
+
+// ============== IP LOCKOUT HELPERS ==============
+const checkIpLockout = async (ipAddress) => {
+  const attempt = await prisma.loginAttempt.findUnique({
+    where: { ipAddress },
+  });
+
+  if (!attempt) return null;
+
+  // Kiểm tra xem IP có bị khóa không
+  if (attempt.lockedUntil && new Date() < attempt.lockedUntil) {
+    const remainingMinutes = Math.ceil((attempt.lockedUntil - new Date()) / 1000 / 60);
+    throw new BadRequestException(
+      `Your IP address has been locked due to multiple failed login attempts. Please try again in ${remainingMinutes} minute(s).`
+    );
+  }
+
+  // Nếu đã hết thời gian khóa, reset
+  if (attempt.lockedUntil && new Date() >= attempt.lockedUntil) {
+    await prisma.loginAttempt.update({
+      where: { ipAddress },
+      data: {
+        failedAttempts: 0,
+        lockedUntil: null,
+        lastAttemptAt: new Date(),
+      },
+    });
+  }
+
+  return attempt;
+};
+
+const recordFailedAttempt = async (ipAddress, email) => {
+  const lockoutPolicy = await systemConfigService.getLockoutPolicy();
+  const { maxFailedAttempts, lockoutDurationMinutes } = lockoutPolicy;
+
+  const attempt = await prisma.loginAttempt.upsert({
+    where: { ipAddress },
+    update: {
+      failedAttempts: { increment: 1 },
+      email,
+      lastAttemptAt: new Date(),
+    },
+    create: {
+      ipAddress,
+      email,
+      failedAttempts: 1,
+      lastAttemptAt: new Date(),
+    },
+  });
+
+  const newFailedCount = attempt.failedAttempts + 1;
+
+  // Nếu vượt quá số lần cho phép, khóa IP
+  if (newFailedCount >= maxFailedAttempts) {
+    const lockedUntil = new Date(Date.now() + lockoutDurationMinutes * 60 * 1000);
+    await prisma.loginAttempt.update({
+      where: { ipAddress },
+      data: { lockedUntil },
+    });
+
+    throw new BadRequestException(
+      `Too many failed login attempts. Your IP address has been locked for ${lockoutDurationMinutes} minutes.`
+    );
+  }
+
+  const remainingAttempts = maxFailedAttempts - newFailedCount;
+  throw new BadRequestException(
+    `Wrong password. You have ${remainingAttempts} attempt(s) remaining before your IP is locked.`
+  );
+};
+
+const resetFailedAttempts = async (ipAddress) => {
+  await prisma.loginAttempt.updateMany({
+    where: { ipAddress },
+    data: {
+      failedAttempts: 0,
+      lockedUntil: null,
+    },
+  });
+};
 
 export const authService = {
   async register(req) {
@@ -60,6 +142,12 @@ export const authService = {
     //   throw new BadRequestException('Device ID is required');
     // }
 
+    // Lấy IP address
+    const clientIp = requestIp.getClientIp(req) || '127.0.0.1';
+
+    // Kiểm tra xem IP có bị khóa không
+    await checkIpLockout(clientIp);
+
     const user = await prisma.user.findUnique({
       where: { email },
       include: { role: true }
@@ -69,7 +157,14 @@ export const authService = {
 
     // Compare Password
     const isMatch = bcrypt.compareSync(password, user.password);
-    if (!isMatch) throw new BadRequestException('Wrong password');
+    if (!isMatch) {
+      // Record failed attempt và throw error với số lần còn lại
+      await recordFailedAttempt(clientIp, email);
+      return; // Không bao giờ đến đây vì recordFailedAttempt sẽ throw
+    }
+
+    // Login thành công → reset failed attempts
+    await resetFailedAttempts(clientIp);
 
     // Kiểm tra xem có device nào đang online không
     const userDeviceMap = getUserDeviceMap();
@@ -101,9 +196,7 @@ export const authService = {
     }
 
     // Không cần OTP → login bình thường
-    // Lưu lịch sử đăng nhập
-    const clientIp = requestIp.getClientIp(req) || '127.0.0.1';
-
+    // Lưu lịch sử đăng nhập (clientIp đã được lấy ở trên)
     const geo = geoip.lookup(clientIp);
     const location = geo ? `${geo.city}, ${geo.country}` : 'Unknown Location';
 

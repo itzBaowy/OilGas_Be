@@ -955,6 +955,19 @@ async function main() {
       description: "Cấu hình ngưỡng phát hiện sự cố",
     },
   });
+  
+  await prisma.systemConfig.upsert({
+    where: { key: "LOCKOUT_POLICY" },
+    update: {},
+    create: {
+      key: "LOCKOUT_POLICY",
+      value: JSON.stringify({
+        maxFailedAttempts: 5,
+        lockoutDurationMinutes: 15,
+      }),
+      description: "Cấu hình chính sách khóa IP sau nhiều lần đăng nhập thất bại",
+    },
+  });
   console.log("✅ Seed SystemConfig thành công!");
 
   console.log("🎉 Seed tất cả dữ liệu thành công!");
