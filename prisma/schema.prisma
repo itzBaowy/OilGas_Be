@@ -14,6 +14,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+type GeoCoordinate {
+  lat Float
+  lng Float
+}
+
 model User {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   email       String   @unique
@@ -122,12 +127,13 @@ model LoginAttempt {
 
 model Warehouse {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  warehouseId String?  @unique // Custom format: WH-001, WH-002, etc.
+  warehouseId String?  @unique
   name        String
   location    String
   capacity    Int
   description String?
-  status      String   @default("ACTIVE") // ACTIVE, MAINTENANCE
+  coordinate  GeoCoordinate?
+  status      String   @default("ACTIVE")
   createdBy   String?  @db.ObjectId
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -135,7 +141,6 @@ model Warehouse {
 
   @@unique([name, location])
   @@map("Warehouse")
-  
 }
 // Sequence model for custom ID generation
 model Sequence {
@@ -293,35 +298,26 @@ model SystemConfig {
 
 model Instrument {
   id                  String       @id @default(auto()) @map("_id") @db.ObjectId
-  instrumentId        String       @unique  // Custom: INS-001, INS-002, ...
+  instrumentId        String       @unique
   name                String
-  type                String       // "Offshore Platform", "Onshore Rig", "FPSO", "Jack-up Rig", "Semi-submersible"
+  type                String
   location            String
   manufacturer        String?
   model               String?
   installDate         DateTime?
-  status              String       @default("Active") // Active, Inactive, Maintenance, Decommissioned
+  status              String       @default("Active")
   description         String?
-  
-  // Decommission fields
+  coordinate          GeoCoordinate?
   decommissionReason  String?
   decommissionedAt    DateTime?
-  
-  // Soft delete
   isDeleted           Boolean      @default(false)
-  
-  // Maintenance tracking
   lastMaintenanceDate DateTime?
   nextMaintenanceDate DateTime?
-  
-  // Timestamps
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
-  
-  // Relations
   assignedEngineers   InstrumentEngineer[]
   maintenanceHistory  MaintenanceHistory[]
-  equipments          Equipment[]  // Equipment belongs to this Instrument
+  equipments          Equipment[]
 
   @@map("Instrument")
 }
