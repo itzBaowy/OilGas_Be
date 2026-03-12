@@ -95,6 +95,8 @@ async function main() {
 
         "VIEW_WAREHOUSE",
         "VIEW_INVENTORY",
+
+        "VIEW_WORLD_MAP",
       ],
     },
   ];
