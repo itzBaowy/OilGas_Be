@@ -243,3 +243,83 @@ export const notifyPasswordExpired = async (userId) => {
         console.error('Error sending password expired notification:', error);
     }
 };
+
+// ===== OIL TRANSACTION NOTIFICATIONS =====
+
+export const notifyOilThreshold = async (userId, instrument, currentVolume, tankCapacity, percentage, alertLevel) => {
+    try {
+        const roundedPct = Math.round(percentage * 10) / 10;
+        let type = 'WARNING';
+        let title = '';
+        let message = '';
+
+        if (alertLevel === 'CRITICAL') {
+            type = 'ERROR';
+            title = '🚨 Oil Tank Full - Extraction Stopped';
+            message = `Oil tank of "${instrument.name}" (${instrument.instrumentId}) has reached ${roundedPct}% (${currentVolume} / ${tankCapacity} liters). Extraction has been stopped. Please dispatch oil to a warehouse immediately!`;
+        } else if (alertLevel === 'HIGH') {
+            type = 'WARNING';
+            title = '⚠️ Oil Tank Almost Full';
+            message = `Oil tank of "${instrument.name}" (${instrument.instrumentId}) has reached ${roundedPct}% (${currentVolume} / ${tankCapacity} liters). Dispatch oil to a warehouse soon!`;
+        } else if (alertLevel === 'WARNING') {
+            type = 'WARNING';
+            title = '🟡 Oil Tank Warning';
+            message = `Oil tank of "${instrument.name}" (${instrument.instrumentId}) has reached ${roundedPct}% (${currentVolume} / ${tankCapacity} liters). Prepare to dispatch oil.`;
+        }
+
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title,
+                message,
+                type,
+                category: 'INVENTORY',
+                relatedId: instrument.id,
+                link: '/oil/dashboard',
+            },
+            user: { id: userId },
+        });
+    } catch (error) {
+        console.error('Error sending oil threshold notification:', error);
+    }
+};
+
+export const notifyOilDispatched = async (userId, instrument, warehouse, quantity, remainingInstrumentOil, newWarehouseOil) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Oil Dispatched Successfully',
+                message: `Dispatched ${quantity} liters of oil from "${instrument.name}" (${instrument.instrumentId}) to "${warehouse.name}" (${warehouse.warehouseId}). ` +
+                         `Instrument remaining: ${remainingInstrumentOil} liters. Warehouse total: ${newWarehouseOil} liters.`,
+                type: 'SUCCESS',
+                category: 'INVENTORY',
+                relatedId: instrument.id,
+                link: '/oil/dashboard',
+            },
+            user: { id: userId },
+        });
+    } catch (error) {
+        console.error('Error sending oil dispatched notification:', error);
+    }
+};
+
+export const notifyOilTransferred = async (userId, fromWarehouse, toWarehouse, quantity, fromRemaining, toNew) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Oil Transferred Successfully',
+                message: `Transferred ${quantity} liters of oil from "${fromWarehouse.name}" (${fromWarehouse.warehouseId}) to "${toWarehouse.name}" (${toWarehouse.warehouseId}). ` +
+                         `Source remaining: ${fromRemaining} liters. Destination total: ${toNew} liters.`,
+                type: 'SUCCESS',
+                category: 'INVENTORY',
+                relatedId: fromWarehouse.id,
+                link: '/oil/dashboard',
+            },
+            user: { id: userId },
+        });
+    } catch (error) {
+        console.error('Error sending oil transferred notification:', error);
+    }
+};

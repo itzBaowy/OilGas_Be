@@ -45,6 +45,9 @@ async function main() {
         "VIEW_OIL_OUTPUT",
         "MONITOR_OIL_OUTPUT",
         "DISPATCH_OIL",
+        "EXTRACT_OIL",
+        "TRANSFER_OIL",
+        "VIEW_OIL_TRANSACTIONS",
 
         "VIEW_REPORT",
         "EXPORT_REPORT",
@@ -77,6 +80,8 @@ async function main() {
         "VIEW_OIL_TANK_STATUS",
         "VIEW_OIL_OUTPUT",
         "MONITOR_OIL_OUTPUT",
+        "EXTRACT_OIL",
+        "VIEW_OIL_TRANSACTIONS",
 
         "VIEW_INCIDENT",
         "ACKNOWLEDGE_ALERT",
@@ -229,6 +234,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 10.346, lng: 107.084 },
       createdBy: adminUser.id,
+      oilCapacity: 100000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-002",
@@ -239,6 +246,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 12.90820, lng: 109.35791 },
       createdBy: adminUser.id,
+      oilCapacity: 50000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-003",
@@ -249,7 +258,7 @@ async function main() {
       status: "MAINTENANCE",
       coordinate: { lat: 20.856, lng: 106.683 },
       createdBy: adminUser.id,
-    },
+  },
     {
       warehouseId: "WH-004",
       name: "Houston Main Base",
@@ -419,6 +428,8 @@ async function main() {
       status: "MAINTENANCE",
       coordinate: { lat: 46.95900, lng: 142.73800 },
       createdBy: adminUser.id,
+      oilCapacity: 30000,
+      currentOilVolume: 0,
     },
   ];
 
@@ -760,6 +771,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2020-06-15"),
       description: "Primary offshore drilling platform for deep water operations",
+      tankCapacity: 10000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 10.25, lng: 107.95 },
     },
     {
@@ -772,6 +786,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2019-03-22"),
       description: "High-capacity onshore drilling rig",
+      tankCapacity: 8000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - WTI",
       coordinate: { lat: 11.58767, lng: 116.74072 },
     },
     {
@@ -784,6 +801,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2018-11-10"),
       description: "Floating Production Storage and Offloading unit",
+      tankCapacity: 15000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 9.50, lng: 108.50 },
     },
     {
@@ -796,6 +816,9 @@ async function main() {
       status: "Maintenance",
       installDate: new Date("2017-08-05"),
       description: "Self-elevating mobile drilling unit",
+      tankCapacity: 6000,
+      currentOilVolume: 0,
+      oilType: "Diesel Fuel",
       coordinate: { lat: 12.10, lng: 109.80 },
     },
     {
@@ -808,6 +831,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2021-01-20"),
       description: "Ultra-deepwater semi-submersible drilling rig",
+      tankCapacity: 12000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 16.90968, lng: 113.73047 },
     },
     {
@@ -820,6 +846,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2022-04-12"),
       description: "Tension leg platform for moderate water depths",
+      tankCapacity: 10000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - WTI",
       coordinate: { lat: 19.84939, lng: 107.95166 },
     },
     {
@@ -832,6 +861,9 @@ async function main() {
       status: "Inactive",
       installDate: new Date("2016-09-30"),
       description: "Decommissioned onshore drilling rig",
+      tankCapacity: 5000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 5.13471, lng: 110.58838 },
     },
     {
@@ -844,6 +876,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2023-02-28"),
       description: "Latest generation FPSO with enhanced storage capacity",
+      tankCapacity: 20000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 9.52491, lng: 101.00830 },
     },
     {
@@ -1134,6 +1169,61 @@ async function main() {
 
   console.log("✅ Seed Instrument thành công!");
 
+  // Seed OilTransaction Sequence
+  console.log("🌱 Đang khởi tạo dữ liệu OilTransaction Sequence...");
+  await prisma.sequence.upsert({
+    where: { name: "oilTransaction" },
+    update: {},
+    create: {
+      name: "oilTransaction",
+      value: 0,
+    },
+  });
+  console.log("✅ Seed OilTransaction Sequence thành công!");
+
+  // Seed Oil Pump Equipment for each Instrument
+  console.log("🌱 Đang khởi tạo dữ liệu Oil Pump cho mỗi Instrument...");
+  const allInstrumentsForPump = await prisma.instrument.findMany();
+  const oilPumpEquipments = allInstrumentsForPump.map((inst, index) => ({
+    equipmentId: `EQ-PUMP-${String(index + 1).padStart(3, "0")}`,
+    name: `Oil Pump - ${inst.name}`,
+    serialNumber: `OP-SN-${Date.now()}-${index + 1}`,
+    type: "Oil Pump",
+    model: "HP-500",
+    status: inst.status === "Active" ? "Active" : "Inactive",
+    location: inst.location,
+    manufacturer: "PumpTech Industries",
+    installDate: inst.installDate || new Date(),
+    description: `Oil extraction pump for ${inst.name}`,
+    quantity: 1,
+    meshId: null,
+    isDeleted: false,
+    instrumentId: inst.id,
+    specifications: {
+      extractionRate: 500,
+      unit: "liters",
+      oilType: inst.oilType || "Crude Oil - Brent",
+      pumpPressure: "3500 PSI",
+      maxDepth: "3000m",
+    },
+  }));
+
+  for (const pump of oilPumpEquipments) {
+    await prisma.equipment.upsert({
+      where: { equipmentId: pump.equipmentId },
+      update: {
+        name: pump.name,
+        status: pump.status,
+        location: pump.location,
+        instrumentId: pump.instrumentId,
+        specifications: pump.specifications,
+      },
+      create: pump,
+    });
+    console.log(`✅ Tạo Oil Pump: ${pump.equipmentId} - ${pump.name}`);
+  }
+  console.log("✅ Seed Oil Pump thành công!");
+
   // Seed InstrumentEngineer (assign some engineers to instruments)
   console.log("🌱 Đang khởi tạo dữ liệu InstrumentEngineer...");
 
@@ -1204,20 +1294,22 @@ async function main() {
   ];
 
   // Assign equipment to instruments (distribute equipment among instruments)
+  // Skip Oil Pumps - they already have correct instrumentId from seed
+  const nonPumpEquipments = allEquipments.filter((eq) => eq.type !== "Oil Pump");
   const equipmentPerInstrument = Math.ceil(
-    allEquipments.length / allInstruments.length,
+    nonPumpEquipments.length / allInstruments.length,
   );
   for (let i = 0; i < allInstruments.length; i++) {
     const instrument = allInstruments[i];
     const startIdx = i * equipmentPerInstrument;
     const endIdx = Math.min(
       startIdx + equipmentPerInstrument,
-      allEquipments.length,
+      nonPumpEquipments.length,
     );
 
     for (let j = startIdx; j < endIdx; j++) {
       await prisma.equipment.update({
-        where: { id: allEquipments[j].id },
+        where: { id: nonPumpEquipments[j].id },
         data: {
           instrument: {
             connect: { id: instrument.id },
@@ -1225,11 +1317,11 @@ async function main() {
         },
       });
       // Update local reference
-      allEquipments[j].instrumentId = instrument.id;
+      nonPumpEquipments[j].instrumentId = instrument.id;
     }
   }
   console.log(
-    `✅ Assigned ${allEquipments.length} equipments to ${allInstruments.length} instruments`,
+    `✅ Assigned ${nonPumpEquipments.length} non-pump equipments to ${allInstruments.length} instruments`,
   );
 
   // Create maintenance records for each equipment (2-3 per equipment)

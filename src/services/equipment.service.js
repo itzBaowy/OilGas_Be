@@ -392,7 +392,7 @@ export const equipmentService = {
 
   getTypes() {
     // Return predefined equipment types for dropdown
-    return ["Pump", "Valve", "Compressor", "Sensor", "Other"];
+    return ["Pump", "Valve", "Compressor", "Sensor", "Oil Pump", "Other"];
   },
 
   async getMaintenanceTypes() {

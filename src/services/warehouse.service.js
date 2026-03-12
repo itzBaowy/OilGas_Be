@@ -83,7 +83,7 @@ export const warehouseService = {
 
     // Tạo warehouse mới
     async createWarehouse(data, userId) {
-        const { name, location, capacity, description, status, coordinate } = data;
+        const { name, location, capacity, oilCapacity, description, status, coordinate } = data;
 
         if (!name || !location || capacity === undefined) {
             throw new BadRequestException("Name, location, and capacity are required");
@@ -117,6 +117,8 @@ export const warehouseService = {
                 name,
                 location,
                 capacity: parseInt(capacity),
+                oilCapacity: oilCapacity ? parseFloat(oilCapacity) : 50000,
+                currentOilVolume: 0,
                 description: description || null,
                 status: status || 'ACTIVE',
                 coordinate: coordinate || null,
@@ -129,7 +131,7 @@ export const warehouseService = {
 
     // Cập nhật warehouse
     async updateWarehouse(warehouseId, data, userId) {
-        const { name, location, capacity, description, status, coordinate } = data;
+        const { name, location, capacity, oilCapacity, description, status, coordinate } = data;
 
         const existingWarehouse = await prisma.warehouse.findUnique({
             where: { id: warehouseId }
@@ -168,6 +170,7 @@ export const warehouseService = {
         if (capacity !== undefined) updateData.capacity = parseInt(capacity);
         if (description !== undefined) updateData.description = description;
         if (status !== undefined) updateData.status = status;
+        if (oilCapacity !== undefined) updateData.oilCapacity = parseFloat(oilCapacity);
         if (coordinate !== undefined) updateData.coordinate = coordinate;
 
         const warehouse = await prisma.warehouse.update({

@@ -139,6 +139,10 @@ model Warehouse {
   updatedAt   DateTime @updatedAt
   inventories Inventory[]
 
+  // Oil Storage (Bể chứa dầu riêng cho kho)
+  oilCapacity      Float?   @default(50000)  // Sức chứa dầu tối đa (Lít)
+  currentOilVolume Float?   @default(0)      // Lượng dầu hiện tại (Lít)
+
   @@unique([name, location])
   @@map("Warehouse")
 }
@@ -170,6 +174,8 @@ model Equipment {
   specifications  Json?    // Flexible technical specs
   lastMaintenanceDate   DateTime?
   nextMaintenanceDate   DateTime?
+  isAutoExtracting      Boolean  @default(false)
+  autoExtractStartedAt  DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
@@ -313,6 +319,13 @@ model Instrument {
   isDeleted           Boolean      @default(false)
   lastMaintenanceDate DateTime?
   nextMaintenanceDate DateTime?
+  
+  // Oil Tank (Bể chứa dầu trên giàn)
+  tankCapacity       Float?       @default(10000)  // Sức chứa tối đa (Lít)
+  currentOilVolume   Float?       @default(0)      // Lượng dầu hiện tại (Lít)
+  oilType            String?                        // "Crude Oil - Brent", "Diesel Fuel"...
+
+  // Timestamps
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   assignedEngineers   InstrumentEngineer[]
@@ -334,5 +347,26 @@ model InstrumentEngineer {
 
   @@unique([instrumentId, engineerId])  // Prevent duplicate assignments
   @@map("InstrumentEngineer")
+}
+
+// Oil Transaction Model - Tracks all oil movements
+model OilTransaction {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  transactionId     String    @unique            // OT-001, OT-002...
+  transactionType   String                       // EXTRACTION, INSTRUMENT_TO_WAREHOUSE, WAREHOUSE_TO_WAREHOUSE
+  fromType          String                       // INSTRUMENT, WAREHOUSE
+  fromId            String    @db.ObjectId
+  toType            String?                      // WAREHOUSE (null for EXTRACTION)
+  toId              String?   @db.ObjectId
+  oilType           String                       // "Crude Oil - Brent"...
+  quantity          Float                        // Số lượng (Lít)
+  transportMethod   String?                      // Pipeline, Tanker, Barge
+  status            String    @default("COMPLETED") // COMPLETED, CANCELLED
+  note              String?
+  createdBy         String    @db.ObjectId
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("OilTransaction")
 }
 

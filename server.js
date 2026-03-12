@@ -13,6 +13,7 @@ import { createServer } from 'http';
 import { initSocket } from './src/common/socket/init.socket.js';
 import { incidentService } from './src/services/incident.service.js';
 import { startPasswordExpiryJob } from './src/jobs/passwordExpiry.job.js';
+import { startAutoExtractEngine } from './src/services/autoExtract.engine.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,4 +64,7 @@ httpServer.listen(PORT, () => {
 
   // Start password expiry check job (runs daily at 9 AM)
   startPasswordExpiryJob();
+
+  // Start auto-extract engine
+  startAutoExtractEngine();
 });

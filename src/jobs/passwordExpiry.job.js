@@ -1,16 +1,6 @@
 import cron from 'node-cron';
 import { systemConfigService } from '../services/systemConfig.service.js';
 
-/**
- * Password Expiry Check Job
- * 
- * Chạy mỗi ngày lúc 0:00 (nửa đêm) để:
- * 1. Kiểm tra users có password sắp hết hạn (trong notifyDaysBefore ngày)
- * 2. Kiểm tra users có password đã hết hạn
- * 3. Gửi notification cho các users này
- * 
- * Cron pattern: '0 0 * * *' = 0:00 (midnight) mỗi ngày
- */
 
 let scheduledJob = null;
 

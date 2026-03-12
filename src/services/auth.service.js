@@ -152,6 +152,11 @@ export const authService = {
 
     if (!user) throw new BadRequestException('No existed user with this email');
 
+    // Check if user is active
+    if (!user.isActive || user.status === 'INACTIVE') {
+      throw new BadRequestException('Your account has been deactivated. Please contact the administrator.');
+    }
+
     // Compare Password
     const isMatch = bcrypt.compareSync(password, user.password);
     if (!isMatch) {
@@ -265,6 +270,11 @@ export const authService = {
 
     if (!user) {
       throw new BadRequestException('Invalid OTP or email');
+    }
+
+    // Check if user is active
+    if (!user.isActive || user.status === 'INACTIVE') {
+      throw new BadRequestException('Your account has been deactivated. Please contact the administrator.');
     }
 
     // Kiểm tra OTP hết hạn
