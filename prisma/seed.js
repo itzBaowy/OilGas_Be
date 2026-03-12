@@ -260,7 +260,9 @@ async function main() {
       status: "MAINTENANCE",
       coordinate: { lat: 20.856, lng: 106.683 },
       createdBy: adminUser.id,
-  },
+      oilCapacity: 30000,
+      currentOilVolume: 0,
+    },
     {
       warehouseId: "WH-004",
       name: "Houston Main Base",
@@ -270,6 +272,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 29.76043, lng: -95.36980 },
       createdBy: adminUser.id,
+      oilCapacity: 100000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-005",
@@ -280,6 +284,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 57.14970, lng: -2.09430 },
       createdBy: adminUser.id,
+      oilCapacity: 80000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-006",
@@ -290,6 +296,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 58.96998, lng: 5.73310 },
       createdBy: adminUser.id,
+      oilCapacity: 70000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-007",
@@ -300,6 +308,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 25.27620, lng: 55.29620 },
       createdBy: adminUser.id,
+      oilCapacity: 90000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-008",
@@ -310,6 +320,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 1.26470, lng: 103.82200 },
       createdBy: adminUser.id,
+      oilCapacity: 60000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-009",
@@ -320,6 +332,8 @@ async function main() {
       status: "MAINTENANCE",
       coordinate: { lat: -31.95050, lng: 115.86040 },
       createdBy: adminUser.id,
+      oilCapacity: 65000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-010",
@@ -330,6 +344,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: -22.90680, lng: -43.17290 },
       createdBy: adminUser.id,
+      oilCapacity: 95000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-011",
@@ -340,6 +356,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 6.45410, lng: 3.39470 },
       createdBy: adminUser.id,
+      oilCapacity: 40000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-012",
@@ -350,6 +368,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 19.07600, lng: 72.87770 },
       createdBy: adminUser.id,
+      oilCapacity: 55000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-013",
@@ -360,6 +380,8 @@ async function main() {
       status: "MAINTENANCE",
       coordinate: { lat: -8.83900, lng: 13.28940 },
       createdBy: adminUser.id,
+      oilCapacity: 35000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-014",
@@ -370,6 +392,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 26.39200, lng: 49.97740 },
       createdBy: adminUser.id,
+      oilCapacity: 85000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-015",
@@ -380,6 +404,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 3.00200, lng: 101.39170 },
       createdBy: adminUser.id,
+      oilCapacity: 45000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-016",
@@ -390,6 +416,8 @@ async function main() {
       status: "MAINTENANCE",
       coordinate: { lat: 10.40520, lng: -61.46830 },
       createdBy: adminUser.id,
+      oilCapacity: 20000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-017",
@@ -400,6 +428,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 40.40930, lng: 49.86710 },
       createdBy: adminUser.id,
+      oilCapacity: 30000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-018",
@@ -410,6 +440,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: 29.95110, lng: -90.07150 },
       createdBy: adminUser.id,
+      oilCapacity: 75000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-019",
@@ -420,6 +452,8 @@ async function main() {
       status: "ACTIVE",
       coordinate: { lat: -22.37080, lng: -41.78690 },
       createdBy: adminUser.id,
+      oilCapacity: 60000,
+      currentOilVolume: 0,
     },
     {
       warehouseId: "WH-020",
@@ -893,6 +927,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2015-08-12"),
       description: "Deepwater semi-submersible in the central Gulf of Mexico",
+      tankCapacity: 12000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - WTI",
       coordinate: { lat: 27.38000, lng: -90.52000 },
     },
     {
@@ -905,6 +942,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2014-05-20"),
       description: "Tension leg platform at Mars deepwater field",
+      tankCapacity: 10000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - WTI",
       coordinate: { lat: 28.16800, lng: -89.22000 },
     },
     {
@@ -917,6 +957,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2010-03-31"),
       description: "Ultra-deepwater spar platform in Perdido region",
+      tankCapacity: 9000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - WTI",
       coordinate: { lat: 26.12000, lng: -94.89000 },
     },
     {
@@ -929,6 +972,9 @@ async function main() {
       status: "Maintenance",
       installDate: new Date("2008-06-14"),
       description: "Large semi-submersible production facility",
+      tankCapacity: 15000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - WTI",
       coordinate: { lat: 28.19500, lng: -88.49500 },
     },
     {
@@ -941,6 +987,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2012-07-18"),
       description: "Major fixed platform on the Forties oil field",
+      tankCapacity: 11000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 57.74700, lng: 0.97200 },
     },
     {
@@ -953,6 +1002,9 @@ async function main() {
       status: "Inactive",
       installDate: new Date("1976-11-10"),
       description: "Historic gravity-based platform on the Brent field",
+      tankCapacity: 8000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 61.06000, lng: 1.71500 },
     },
     {
@@ -965,6 +1017,9 @@ async function main() {
       status: "Active",
       installDate: new Date("1995-09-01"),
       description: "Massive concrete gravity platform in Norwegian waters",
+      tankCapacity: 20000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 60.64500, lng: 3.72600 },
     },
     {
@@ -977,6 +1032,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2013-04-22"),
       description: "Central processing complex in the Ekofisk area",
+      tankCapacity: 13000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 56.54500, lng: 3.21200 },
     },
     {
@@ -989,6 +1047,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2019-01-15"),
       description: "Jack-up rig servicing the Khafji offshore field",
+      tankCapacity: 7000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Arabian Heavy",
       coordinate: { lat: 28.41800, lng: 48.77300 },
     },
     {
@@ -1001,6 +1062,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2017-06-30"),
       description: "FPSO unit at the Salman gas condensate field",
+      tankCapacity: 16000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Arabian Light",
       coordinate: { lat: 26.82000, lng: 52.62000 },
     },
     {
@@ -1013,6 +1077,9 @@ async function main() {
       status: "Maintenance",
       installDate: new Date("2011-10-08"),
       description: "Platform at the world largest offshore oil field",
+      tankCapacity: 18000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Arabian Heavy",
       coordinate: { lat: 28.13500, lng: 49.32000 },
     },
     {
@@ -1025,6 +1092,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2005-11-12"),
       description: "Deepwater FPSO off the Niger Delta coastline",
+      tankCapacity: 14000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Bonny Light",
       coordinate: { lat: 4.52000, lng: 4.63000 },
     },
     {
@@ -1037,6 +1107,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2008-07-28"),
       description: "Large capacity FPSO in deepwater Nigeria",
+      tankCapacity: 17000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Bonny Light",
       coordinate: { lat: 4.26000, lng: 4.99000 },
     },
     {
@@ -1049,6 +1122,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2001-12-04"),
       description: "Deepwater FPSO offshore Angola Block 17",
+      tankCapacity: 12000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Cabinda",
       coordinate: { lat: -7.05000, lng: 11.98000 },
     },
     {
@@ -1061,6 +1137,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2007-11-23"),
       description: "Semi-submersible production unit in the Campos Basin",
+      tankCapacity: 13000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Marlim",
       coordinate: { lat: -22.46000, lng: -39.85000 },
     },
     {
@@ -1073,6 +1152,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2014-02-10"),
       description: "Pre-salt FPSO at the prolific Lula oil field",
+      tankCapacity: 19000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Lula",
       coordinate: { lat: -25.28000, lng: -42.96000 },
     },
     {
@@ -1085,6 +1167,9 @@ async function main() {
       status: "Maintenance",
       installDate: new Date("2016-05-19"),
       description: "Jack-up exploration rig in the pre-salt Campos Basin",
+      tankCapacity: 6000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Lula",
       coordinate: { lat: -23.38000, lng: -40.72000 },
     },
     {
@@ -1097,6 +1182,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2005-02-15"),
       description: "Central platform of the Azeri-Chirag-Gunashli complex",
+      tankCapacity: 10000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Azeri Light",
       coordinate: { lat: 40.15000, lng: 50.95000 },
     },
     {
@@ -1109,6 +1197,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2013-09-11"),
       description: "Massive offshore development in the north Caspian",
+      tankCapacity: 8000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Kashagan",
       coordinate: { lat: 46.30000, lng: 51.58000 },
     },
     {
@@ -1121,6 +1212,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2018-04-03"),
       description: "Exploration semi-sub in Australia Bass Strait",
+      tankCapacity: 9000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Gippsland",
       coordinate: { lat: -38.60000, lng: 148.30000 },
     },
     {
@@ -1133,6 +1227,9 @@ async function main() {
       status: "Maintenance",
       installDate: new Date("2016-03-12"),
       description: "Northernmost FPSO in the Norwegian Barents Sea",
+      tankCapacity: 11000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Brent",
       coordinate: { lat: 71.30000, lng: 22.30000 },
     },
     {
@@ -1145,6 +1242,9 @@ async function main() {
       status: "Active",
       installDate: new Date("2010-11-28"),
       description: "Deepwater FPSO offshore Ghana in the Tano Basin",
+      tankCapacity: 14000,
+      currentOilVolume: 0,
+      oilType: "Crude Oil - Jubilee",
       coordinate: { lat: 4.58000, lng: -2.79000 },
     },
   ];
