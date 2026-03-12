@@ -237,15 +237,13 @@ export const instrumentService = {
       description,
       tankCapacity,
       oilType,
+      coordinate,
     } = req.body;
 
-    // Validate data using helper
     const { parsedInstallDate } = validateInstrumentData(req.body);
 
-    // Generate custom ID
     const instrumentId = await this.generateCustomId();
 
-    // Create instrument
     const instrument = await prisma.instrument.create({
       data: {
         instrumentId,
@@ -257,6 +255,7 @@ export const instrumentService = {
         installDate: parsedInstallDate,
         status,
         description,
+        coordinate: coordinate || null,
         isDeleted: false,
         ...(tankCapacity !== undefined && { tankCapacity: parseFloat(tankCapacity) }),
         ...(oilType !== undefined && { oilType }),
@@ -269,9 +268,6 @@ export const instrumentService = {
     return instrument;
   },
 
-  /**
-   * Update instrument
-   */
   async updateInstrument(req) {
     const { id } = req.params;
     const {
@@ -283,13 +279,13 @@ export const instrumentService = {
       installDate,
       status,
       description,
+      coordinate,
       lastMaintenanceDate,
       nextMaintenanceDate,
       tankCapacity,
       oilType,
     } = req.body;
 
-    // Check if instrument exists
     const existingInstrument = await prisma.instrument.findFirst({
       where: buildIdWhereClause(id),
     });
@@ -298,11 +294,9 @@ export const instrumentService = {
       throw new NotFoundException("Instrument not found");
     }
 
-    // Validate update data using helper
     const { parsedInstallDate, parsedLastMaintenanceDate, parsedNextMaintenanceDate } =
       validateInstrumentUpdateData(req.body);
 
-    // Build update data
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
@@ -313,6 +307,7 @@ export const instrumentService = {
       updateData.installDate = parsedInstallDate;
     if (status !== undefined) updateData.status = status;
     if (description !== undefined) updateData.description = description;
+    if (coordinate !== undefined) updateData.coordinate = coordinate;
     if (lastMaintenanceDate !== undefined)
       updateData.lastMaintenanceDate = parsedLastMaintenanceDate;
     if (nextMaintenanceDate !== undefined)
@@ -321,7 +316,6 @@ export const instrumentService = {
       updateData.tankCapacity = parseFloat(tankCapacity);
     if (oilType !== undefined) updateData.oilType = oilType;
 
-    // Update instrument
     const updatedInstrument = await prisma.instrument.update({
       where: { id: existingInstrument.id },
       data: updateData,

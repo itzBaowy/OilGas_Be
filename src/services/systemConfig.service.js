@@ -4,6 +4,7 @@ import { incidentService } from './incident.service.js';
 import { notificationService } from './notification.service.js';
 import { getIO } from '../common/socket/init.socket.js';
 import { notifyPasswordExpiring, notifyPasswordExpired, notifyAccountDeactivated } from '../common/helpers/notification.helper.js';
+import { validateThresholds, validatePasswordExpiryPolicy } from '../common/helpers/validate.helper.js';
 
 const parseNumericValue = (val) => {
   if (val == null) return null;
@@ -22,28 +23,6 @@ const DEFAULT_THRESHOLDS = {
 
 const CONFIG_KEY = 'INCIDENT_THRESHOLDS';
 
-const validateThresholds = (data) => {
-  if (!Number.isInteger(data.pressureLimit) || data.pressureLimit < 50 || data.pressureLimit > 500) {
-    throw new BadRequestException('Pressure limit must be between 50 and 500 psi');
-  }
-
-  if (!Number.isInteger(data.tempLimit) || data.tempLimit < 30 || data.tempLimit > 200) {
-    throw new BadRequestException('Temperature limit must be between 30 and 200 °C');
-  }
-
-  if (!Number.isInteger(data.autoRefreshInterval) || data.autoRefreshInterval < 5000 || data.autoRefreshInterval > 300000) {
-    throw new BadRequestException('Auto refresh interval must be between 5 and 300 seconds');
-  }
-
-  if (typeof data.alertSoundEnabled !== 'boolean') {
-    throw new BadRequestException('alertSoundEnabled must be true or false');
-  }
-
-  if (!Number.isInteger(data.criticalAlertThreshold) || data.criticalAlertThreshold < 1 || data.criticalAlertThreshold > 10) {
-    throw new BadRequestException('Critical alert threshold must be between 1 and 10');
-  }
-};
-
 export const systemConfigService = {
   async getIncidentThresholds() {
     const config = await prisma.systemConfig.findUnique({
@@ -58,7 +37,7 @@ export const systemConfigService = {
   async updateIncidentThresholds(data, userId) {
     validateThresholds(data);
 
-    // ── 1. Lưu config vào DB (nhanh, không block) ──────────────────────────
+    //1. Lưu config vào DB 
     const config = await prisma.systemConfig.upsert({
       where: { key: CONFIG_KEY },
       update: { value: JSON.stringify(data), updatedBy: userId },
@@ -72,32 +51,16 @@ export const systemConfigService = {
 
     const savedConfig = JSON.parse(config.value);
 
-    /* [THRESHOLD_SCAN_DISABLED] ───────────────────────────────────────────
-     * Tạm tắt: Background quét thiết bị vi phạm ngưỡng mới sau khi update.
-     * Khi bật lại: bỏ comment block bên dưới.
-     * ──────────────────────────────────────────────────────────────────────── */
     // this._scanViolationsAfterThresholdChange(savedConfig, userId)
     //   .catch((err) => console.error('[ThresholdScan] Background scan failed:', err));
 
-    // ── 3. Trả response ngay — không chờ background scan ────────────────────
     return savedConfig;
   },
 
-  /**
-   * BACKGROUND PROCESS — Không gọi trực tiếp từ controller
-   * 
-   * Flow:
-   * 1. Query tất cả incident OPEN/ACKNOWLEDGED có currentReading vượt ngưỡng mới
-   * 2. Query tất cả Equipment thuộc Instrument Active — kiểm tra specifications
-   * 3. Tạo incident mới cho thiết bị vi phạm chưa có incident active
-   * 4. Cập nhật Instrument status → Maintenance nếu có vi phạm
-   * 5. Gửi notification cho Supervisors + Engineers
-   * 6. Emit socket event "threshold_updated" cho toàn bộ Frontend
-   */
   async _scanViolationsAfterThresholdChange(newThresholds, adminUserId) {
     const { pressureLimit, tempLimit } = newThresholds;
 
-    // ── 1. Tìm incidents đang active có currentReading vượt ngưỡng MỚI ─────
+    //1. Tìm incidents đang active có currentReading vượt ngưỡng MỚI
     const existingViolations = await prisma.incident.findMany({
       where: {
         status: { in: ['OPEN', 'ACKNOWLEDGED'] },
@@ -120,13 +83,13 @@ export const systemConfigService = {
       (inc) => inc.type === 'TEMPERATURE_ANOMALY' && inc.currentReading > tempLimit
     );
 
-    // ── 2. Quét Equipment specifications để phát hiện vi phạm mới ───────────
+    //2. Quét Equipment specifications để phát hiện vi phạm mới
     const newIncidents = await this._detectEquipmentViolations(newThresholds, adminUserId);
 
     const allViolations = [...pressureViolations, ...tempViolations];
     const totalViolationCount = allViolations.length + newIncidents.length;
 
-    // ── 3. Lấy thông tin admin ──────────────────────────────────────────────
+    //3. Lấy thông tin admin
     const adminUser = adminUserId
       ? await prisma.user.findUnique({
           where: { id: adminUserId },
@@ -134,7 +97,7 @@ export const systemConfigService = {
         })
       : null;
 
-    // ── 4. Gửi notification cho tất cả Supervisor và Engineer ───────────────
+    //4. Gửi notification cho tất cả Supervisor và Engineer
     const supervisorsAndEngineers = await prisma.user.findMany({
       where: {
         role: {
@@ -171,7 +134,7 @@ export const systemConfigService = {
       await notificationService.createBulkNotifications(notificationData);
     }
 
-    // ── 5. Emit socket event cho toàn bộ connected clients ──────────────────
+    //5. Emit socket event cho toàn bộ connected clients
     const io = getIO();
     if (io) {
       io.emit('threshold_updated', {
@@ -491,18 +454,7 @@ export const systemConfigService = {
   async updatePasswordExpiryPolicy(data, userId) {
     const { expiryDays, notifyDaysBefore, enabled } = data;
 
-    // Validation
-    if (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 365) {
-      throw new BadRequestException('Expiry days must be between 1 and 365');
-    }
-
-    if (!Number.isInteger(notifyDaysBefore) || notifyDaysBefore < 1 || notifyDaysBefore > 30) {
-      throw new BadRequestException('Notify days before must be between 1 and 30');
-    }
-
-    if (typeof enabled !== 'boolean') {
-      throw new BadRequestException('Enabled must be true or false');
-    }
+    validatePasswordExpiryPolicy(data);
 
     const config = await prisma.systemConfig.upsert({
       where: { key: 'PASSWORD_EXPIRY_POLICY' },
