@@ -4,6 +4,7 @@ import { incidentService } from './incident.service.js';
 import { notificationService } from './notification.service.js';
 import { getIO } from '../common/socket/init.socket.js';
 import { notifyPasswordExpiring, notifyPasswordExpired } from '../common/helpers/notification.helper.js';
+import { validateThresholds } from '../common/helpers/validate.helper.js';
 
 const parseNumericValue = (val) => {
   if (val == null) return null;
@@ -21,28 +22,6 @@ const DEFAULT_THRESHOLDS = {
 };
 
 const CONFIG_KEY = 'INCIDENT_THRESHOLDS';
-
-const validateThresholds = (data) => {
-  if (!Number.isInteger(data.pressureLimit) || data.pressureLimit < 50 || data.pressureLimit > 500) {
-    throw new BadRequestException('Pressure limit must be between 50 and 500 psi');
-  }
-
-  if (!Number.isInteger(data.tempLimit) || data.tempLimit < 30 || data.tempLimit > 200) {
-    throw new BadRequestException('Temperature limit must be between 30 and 200 °C');
-  }
-
-  if (!Number.isInteger(data.autoRefreshInterval) || data.autoRefreshInterval < 5000 || data.autoRefreshInterval > 300000) {
-    throw new BadRequestException('Auto refresh interval must be between 5 and 300 seconds');
-  }
-
-  if (typeof data.alertSoundEnabled !== 'boolean') {
-    throw new BadRequestException('alertSoundEnabled must be true or false');
-  }
-
-  if (!Number.isInteger(data.criticalAlertThreshold) || data.criticalAlertThreshold < 1 || data.criticalAlertThreshold > 10) {
-    throw new BadRequestException('Critical alert threshold must be between 1 and 10');
-  }
-};
 
 export const systemConfigService = {
   async getIncidentThresholds() {
