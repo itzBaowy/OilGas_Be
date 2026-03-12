@@ -73,4 +73,7 @@ httpServer.listen(PORT, () => {
 
   // Start auto deactivation check job (runs daily at midnight)
   startAutoDeactivationJob();
+
+  // Start auto-extract engine (runs every hour)
+  startAutoExtractEngine();
 });
