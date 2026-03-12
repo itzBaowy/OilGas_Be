@@ -83,25 +83,21 @@ export const warehouseService = {
 
     // Tạo warehouse mới
     async createWarehouse(data, userId) {
-        const { name, location, capacity, oilCapacity, description, status } = data;
+        const { name, location, capacity, oilCapacity, description, status, coordinate } = data;
 
-        // Validate required fields
         if (!name || !location || capacity === undefined) {
             throw new BadRequestException("Name, location, and capacity are required");
         }
 
-        // Validate capacity > 0
         if (capacity <= 0) {
             throw new BadRequestException("Capacity must be greater than 0");
         }
 
-        // Validate status
         const validStatuses = ['ACTIVE', 'MAINTENANCE'];
         if (status && !validStatuses.includes(status)) {
             throw new BadRequestException("Status must be ACTIVE or MAINTENANCE");
         }
 
-        // Kiểm tra warehouse đã tồn tại với cùng name và location (Unique name + location)
         const existingWarehouse = await prisma.warehouse.findFirst({
             where: {
                 name: name,
@@ -113,10 +109,8 @@ export const warehouseService = {
             throw new BadRequestException("Warehouse with this name and location already exists");
         }
 
-        // Generate custom warehouse ID
         const warehouseId = await this.generateCustomId();
 
-        // Create warehouse
         const warehouse = await prisma.warehouse.create({
             data: {
                 warehouseId,
@@ -127,6 +121,7 @@ export const warehouseService = {
                 currentOilVolume: 0,
                 description: description || null,
                 status: status || 'ACTIVE',
+                coordinate: coordinate || null,
                 createdBy: userId || null
             }
         });
@@ -136,9 +131,8 @@ export const warehouseService = {
 
     // Cập nhật warehouse
     async updateWarehouse(warehouseId, data, userId) {
-        const { name, location, capacity, oilCapacity, description, status } = data;
+        const { name, location, capacity, oilCapacity, description, status, coordinate } = data;
 
-        // Check warehouse exists - Kiểm tra warehouse có tồn tại không
         const existingWarehouse = await prisma.warehouse.findUnique({
             where: { id: warehouseId }
         });
@@ -147,18 +141,15 @@ export const warehouseService = {
             throw new NotFoundException("Warehouse does not exist");
         }
 
-        // Validate capacity > 0 nếu có update
         if (capacity !== undefined && capacity <= 0) {
             throw new BadRequestException("Capacity must be greater than 0");
         }
 
-        // Validate status nếu có
         const validStatuses = ['ACTIVE', 'MAINTENANCE'];
         if (status && !validStatuses.includes(status)) {
             throw new BadRequestException("Status must be ACTIVE or MAINTENANCE");
         }
 
-        // Prevent duplicate name/location - Nếu đổi name hoặc location, kiểm tra unique constraint
         if ((name && name !== existingWarehouse.name) || (location && location !== existingWarehouse.location)) {
             const duplicateWarehouse = await prisma.warehouse.findFirst({
                 where: {
@@ -173,7 +164,6 @@ export const warehouseService = {
             }
         }
 
-        // Prepare update data
         const updateData = {};
         if (name !== undefined) updateData.name = name;
         if (location !== undefined) updateData.location = location;
@@ -181,24 +171,12 @@ export const warehouseService = {
         if (description !== undefined) updateData.description = description;
         if (status !== undefined) updateData.status = status;
         if (oilCapacity !== undefined) updateData.oilCapacity = parseFloat(oilCapacity);
+        if (coordinate !== undefined) updateData.coordinate = coordinate;
 
-        // Save old/new values for audit log (optional enhancement)
-        const oldValues = {
-            name: existingWarehouse.name,
-            location: existingWarehouse.location,
-            capacity: existingWarehouse.capacity,
-            status: existingWarehouse.status
-        };
-
-        // Update warehouse
         const warehouse = await prisma.warehouse.update({
             where: { id: warehouseId },
             data: updateData
         });
-
-        // Log the update (optional - can be used with Log model)
-        // You can implement audit log here if needed
-        // Example: await logService.createLog({ action: 'UPDATE_WAREHOUSE', oldValues, newValues: warehouse, userId });
 
         return warehouse;
     },
