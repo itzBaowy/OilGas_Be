@@ -1088,6 +1088,18 @@ async function main() {
     },
   });
 
+  await prisma.systemConfig.upsert({
+    where: { key: "SESSION_TIMEOUT_POLICY" },
+    update: {},
+    create: {
+      key: "SESSION_TIMEOUT_POLICY",
+      value: JSON.stringify({
+        timeoutMinutes: 15,
+      }),
+      description: "Cấu hình thời gian timeout session không hoạt động",
+    },
+  });
+
   console.log("✅ Seed SystemConfig thành công!");
 
   console.log("🎉 Seed tất cả dữ liệu thành công!");

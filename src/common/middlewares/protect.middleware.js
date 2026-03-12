@@ -1,6 +1,8 @@
 import { tokenService } from "../../services/token.service.js";
 import { UnauthorizedException } from "../helpers/exception.helper.js";
 import prisma from "../../prisma/connect.prisma.js";
+import { sessionService } from "../../services/session.service.js";
+import { authService } from "../../services/auth.service.js";
 
 export const protect = async (req, res, next) => {
     const authorization = req.headers.authorization;
@@ -44,6 +46,20 @@ export const protect = async (req, res, next) => {
     if (!userExits.isActive || userExits.status === 'INACTIVE') {
         throw new UnauthorizedException("Your account has been deactivated. Please contact the administrator.");
     }
+
+    // Check Redis session (activity-based timeout)
+    const isSessionValid = await sessionService.isSessionValid(userId);
+    if (!isSessionValid) {
+        // Logout user (blacklist token + delete Redis session)
+        await authService.logout({
+            headers: { authorization },
+            user: { id: userId }
+        });
+        throw new UnauthorizedException("Session expired due to inactivity. Please login again.");
+    }
+
+    // Refresh session TTL (reset timeout on activity)
+    await sessionService.refreshSession(userId);
 
     // console.log({ authorization, type, token, userId, userExits });
 

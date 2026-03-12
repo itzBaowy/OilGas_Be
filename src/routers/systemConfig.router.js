@@ -389,4 +389,70 @@ systemConfigRouter.put('/auto-deactivation-policy', protect, checkRole(['Admin']
  */
 systemConfigRouter.post('/auto-deactivation-check', protect, checkRole(['Admin']), systemConfigController.checkAutoDeactivation);
 
+/**
+ * @swagger
+ * /api/system-config/session-timeout-policy:
+ *   get:
+ *     summary: Lấy cấu hình session timeout
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     timeoutMinutes:
+ *                       type: integer
+ *                       example: 15
+ *                       description: Thời gian timeout session (phút)
+ */
+systemConfigRouter.get('/session-timeout-policy', protect, systemConfigController.getSessionTimeoutPolicy);
+
+/**
+ * @swagger
+ * /api/system-config/session-timeout-policy:
+ *   put:
+ *     summary: Cập nhật cấu hình session timeout
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - timeoutMinutes
+ *             properties:
+ *               timeoutMinutes:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 480
+ *                 example: 15
+ *                 description: Thời gian timeout (1-480 phút)
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     timeoutMinutes:
+ *                       type: integer
+ *                       example: 15
+ */
+systemConfigRouter.put('/session-timeout-policy', protect, checkRole(['Admin']), systemConfigController.updateSessionTimeoutPolicy);
+
 export default systemConfigRouter;

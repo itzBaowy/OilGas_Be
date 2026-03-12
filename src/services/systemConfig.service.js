@@ -706,4 +706,43 @@ export const systemConfigService = {
       deactivated: usersToDeactivate.length 
     };
   },
+
+  async getSessionTimeoutPolicy() {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'SESSION_TIMEOUT_POLICY' },
+    });
+
+    if (!config) {
+      return {
+        timeoutMinutes: 15,
+      };
+    }
+
+    return JSON.parse(config.value);
+  },
+
+  async updateSessionTimeoutPolicy(data, userId) {
+    const { timeoutMinutes } = data;
+
+    // Validation
+    if (!Number.isInteger(timeoutMinutes) || timeoutMinutes < 1 || timeoutMinutes > 480) {
+      throw new BadRequestException('Timeout minutes must be between 1 and 480 (8 hours)');
+    }
+
+    const config = await prisma.systemConfig.upsert({
+      where: { key: 'SESSION_TIMEOUT_POLICY' },
+      update: { 
+        value: JSON.stringify({ timeoutMinutes }), 
+        updatedBy: userId
+      },
+      create: {
+        key: 'SESSION_TIMEOUT_POLICY',
+        value: JSON.stringify({ timeoutMinutes }),
+        description: 'Cấu hình thời gian timeout session không hoạt động',
+        updatedBy: userId,
+      },
+    });
+
+    return JSON.parse(config.value);
+  },
 };

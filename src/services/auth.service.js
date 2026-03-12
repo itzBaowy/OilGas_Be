@@ -5,6 +5,7 @@ import { BadRequestException, UnauthorizedException } from "../common/helpers/ex
 import { getTokenFromHeader } from '../common/helpers/function.helper.js';
 import { emailService } from './email.service.js';
 import { systemConfigService } from './systemConfig.service.js';
+import { sessionService } from './session.service.js';
 import { validatePassword, validateEmail } from '../common/helpers/validate.helper.js';
 import { UAParser } from 'ua-parser-js';
 import requestIp from 'request-ip';
@@ -239,7 +240,17 @@ export const authService = {
       }
     });
     // tạo token
-    const tokens = tokenService.createTokens(user.id);
+    const sessionTimeoutPolicy = await systemConfigService.getSessionTimeoutPolicy();
+    const tokens = tokenService.createTokens(user.id, sessionTimeoutPolicy.timeoutMinutes);
+
+    // Tạo Redis session với activity tracking
+    await sessionService.createSession(user.id, {
+      ip: clientIp,
+      location: location,
+      device: deviceName,
+      browser: parser.getBrowser().name,
+      os: parser.getOS().name,
+    }, sessionTimeoutPolicy.timeoutMinutes);
 
     // Thêm warning về password expiry nếu có
     if (user.passwordExpiryWarning) {
@@ -341,7 +352,17 @@ export const authService = {
     }
 
     // Tạo tokens
-    const tokens = tokenService.createTokens(user.id);
+    const sessionTimeoutPolicy = await systemConfigService.getSessionTimeoutPolicy();
+    const tokens = tokenService.createTokens(user.id, sessionTimeoutPolicy.timeoutMinutes);
+
+    // Tạo Redis session với activity tracking
+    await sessionService.createSession(user.id, {
+      ip: clientIp,
+      location: location,
+      device: deviceName,
+      browser: parser.getBrowser().name,
+      os: parser.getOS().name,
+    }, sessionTimeoutPolicy.timeoutMinutes);
 
     // Thêm warning về password expiry nếu có
     if (user.passwordExpiryWarning) {
@@ -390,7 +411,8 @@ export const authService = {
 
     // Trường hợp: trả 2 token
     // refreshToken (1d) sẽ được làm mới (rotate): chỉ cần trong 1 ngày mà người dùng không đăng nhập => logout
-    const tokens = tokenService.createTokens(userExist.id)
+    const sessionTimeoutPolicy = await systemConfigService.getSessionTimeoutPolicy();
+    const tokens = tokenService.createTokens(userExist.id, sessionTimeoutPolicy.timeoutMinutes)
 
     // Trường hợp: trả 1 token (accessToken)
     // refreshToken KHÔNG được làm mới: thời gian sống bao nhiêu thì trạng thái đăng nhập giữ được bấy nhiêu
@@ -449,7 +471,26 @@ export const authService = {
   async googleCallback(req) {
     // console.log("user google", req.user);
 
-    const { accessToken, refreshToken } = tokenService.createTokens(req.user.id);
+    const sessionTimeoutPolicy = await systemConfigService.getSessionTimeoutPolicy();
+    const { accessToken, refreshToken } = tokenService.createTokens(req.user.id, sessionTimeoutPolicy.timeoutMinutes);
+
+    // Parse device info
+    const clientIp = requestIp.getClientIp(req) || '127.0.0.1';
+    const geo = geoip.lookup(clientIp);
+    const location = geo ? `${geo.city}, ${geo.country}` : 'Unknown Location';
+    const userAgent = req.headers['user-agent'];
+    const parser = new UAParser(userAgent);
+    const deviceName = `${parser.getBrowser().name} on ${parser.getOS().name}`;
+
+    // Tạo Redis session
+    await sessionService.createSession(req.user.id, {
+      ip: clientIp,
+      location: location,
+      device: deviceName,
+      browser: parser.getBrowser().name,
+      os: parser.getOS().name,
+    }, sessionTimeoutPolicy.timeoutMinutes);
+
     // console.log({ accessToken, refreshToken });
 
     // truyền AT và RT trong query url của FE
@@ -571,6 +612,11 @@ export const authService = {
         token: accessToken,
       },
     });
+
+    // Xóa Redis session
+    if (req.user && req.user.id) {
+      await sessionService.deleteSession(req.user.id);
+    }
 
     return { message: 'Logout successfully' };
   },

@@ -73,4 +73,16 @@ export const systemConfigController = {
     const response = responseSuccess(data, 'Auto deactivation check completed successfully');
     res.status(response.statusCode).json(response);
   },
+
+  async getSessionTimeoutPolicy(req, res) {
+    const data = await systemConfigService.getSessionTimeoutPolicy();
+    const response = responseSuccess(data, 'Session timeout policy retrieved successfully');
+    res.status(response.statusCode).json(response);
+  },
+
+  async updateSessionTimeoutPolicy(req, res) {
+    const data = await systemConfigService.updateSessionTimeoutPolicy(req.body, req.user.id);
+    const response = responseSuccess(data, 'Session timeout policy updated successfully');
+    res.status(response.statusCode).json(response);
+  },
 };

@@ -15,6 +15,7 @@ import { incidentService } from './src/services/incident.service.js';
 import { startPasswordExpiryJob } from './src/jobs/passwordExpiry.job.js';
 import { startAutoDeactivationJob } from './src/jobs/autoDeactivation.job.js';
 import { startAutoExtractEngine } from './src/services/autoExtract.engine.js';
+import { connectRedis } from './src/config/redis.config.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,6 +59,10 @@ httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running at http://localhost:${PORT}`);
   console.log(`📄 Swagger Docs at http://localhost:${PORT}/api-docs`);
   console.log(`-----------------------------------------`);
+
+  // Connect to Redis for session management
+  connectRedis()
+    .catch((err) => console.error('[Redis] Connection failed:', err.message));
 
   // Startup check: sửa Instrument kẹt Maintenance khi không có incident active
   incidentService.reconcileInstrumentStatuses()
