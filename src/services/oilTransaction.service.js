@@ -9,12 +9,23 @@ import {
   notifyOilDispatched,
   notifyOilTransferred,
 } from "../common/helpers/notification.helper.js";
+import { incidentService } from "./incident.service.js";
+import { notificationService } from "./notification.service.js";
+import { getIO } from "../common/socket/init.socket.js";
 
 // Threshold constants (percentage of tankCapacity)
 const OIL_THRESHOLD = {
   WARNING: 70,
   HIGH: 85,
   CRITICAL: 95,
+};
+
+const CONFIG_KEY = "INCIDENT_THRESHOLDS";
+const DEFAULT_THRESHOLDS = {
+  pressureLimit: 120,
+  tempLimit: 90,
+  criticalAlertThreshold: 3,
+  pumpMaxRate: 200,
 };
 
 export const oilTransactionService = {
@@ -122,6 +133,196 @@ export const oilTransactionService = {
     if (percentage >= OIL_THRESHOLD.HIGH) return "HIGH";
     if (percentage >= OIL_THRESHOLD.WARNING) return "WARNING";
     return "NORMAL";
+  },
+
+  // ===== SIMULATE PUMP =====
+  async simulatePump(data, user) {
+    const { instrument_id, equipment_id, sensor_pressure, sensor_temperature, sensor_pump_rate, pump_volume } = data;
+
+    if (!instrument_id || !equipment_id) throw new BadRequestException("instrument_id and equipment_id are required");
+    if (!pump_volume || pump_volume <= 0) throw new BadRequestException("pump_volume must be greater than 0");
+
+    const instrument = await this.findInstrument(instrument_id);
+    if (!instrument) throw new NotFoundException("Instrument not found");
+    if (instrument.isDeleted) throw new BadRequestException("Instrument has been deleted");
+    if (instrument.status !== "Active") throw new BadRequestException(`Instrument "${instrument.name}" is ${instrument.status}. Only Active instruments can be simulated.`);
+    if (!instrument.tankCapacity || instrument.tankCapacity <= 0) throw new BadRequestException(`Instrument "${instrument.name}" has no configured oil tank.`);
+
+    let equipment = null;
+    if (equipment_id.match(/^EQ-/)) {
+      equipment = await prisma.equipment.findUnique({ where: { equipmentId: equipment_id } });
+    } else {
+      equipment = await prisma.equipment.findUnique({ where: { id: equipment_id } });
+    }
+    if (!equipment) throw new NotFoundException("Oil Pump equipment not found");
+    if (equipment.type !== "Oil Pump") throw new BadRequestException(`Equipment "${equipment.name}" is not an Oil Pump.`);
+    if (equipment.instrumentId !== instrument.id) throw new BadRequestException(`Oil Pump is not assigned to this instrument.`);
+    if (equipment.status !== "Active") throw new BadRequestException(`Oil Pump "${equipment.name}" must be Active.`);
+
+    // Load threshold config set by Admin
+    const configRow = await prisma.systemConfig.findUnique({ where: { key: CONFIG_KEY } });
+    const thresholds = configRow ? JSON.parse(configRow.value) : DEFAULT_THRESHOLDS;
+    const { pressureLimit, tempLimit, pumpMaxRate = 200 } = thresholds;
+
+    // Pump oil into tank
+    const currentVolume = instrument.currentOilVolume || 0;
+    const tankCapacity = instrument.tankCapacity;
+    const currentPct = (currentVolume / tankCapacity) * 100;
+
+    if (currentPct >= OIL_THRESHOLD.CRITICAL) {
+      throw new BadRequestException(`Oil tank of "${instrument.name}" is full (${currentPct.toFixed(1)}%). Cannot pump more oil.`);
+    }
+
+    const actualPumped = Math.min(pump_volume, tankCapacity - currentVolume);
+    const newVolume = currentVolume + actualPumped;
+    const newPct = (newVolume / tankCapacity) * 100;
+
+    const updatedInstrument = await prisma.instrument.update({
+      where: { id: instrument.id },
+      data: { currentOilVolume: newVolume },
+    });
+
+    const transactionId = await this.generateTransactionId();
+    const transaction = await prisma.oilTransaction.create({
+      data: {
+        transactionId,
+        transactionType: "EXTRACTION",
+        fromType: "INSTRUMENT",
+        fromId: instrument.id,
+        oilType: instrument.oilType || "Crude Oil - Brent",
+        quantity: actualPumped,
+        status: "COMPLETED",
+        note: `[Simulator] Pumped ${actualPumped} L via ${equipment.name}`,
+        createdBy: user.id,
+      },
+    });
+
+    // Check sensor readings against thresholds
+    const violations = [];
+    if (sensor_pressure != null && sensor_pressure > pressureLimit) {
+      violations.push({ type: "PRESSURE_ANOMALY", reading: sensor_pressure, limit: pressureLimit, label: "Pressure", unit: "psi" });
+    }
+    if (sensor_temperature != null && sensor_temperature > tempLimit) {
+      violations.push({ type: "TEMPERATURE_ANOMALY", reading: sensor_temperature, limit: tempLimit, label: "Temperature", unit: "°C" });
+    }
+    if (sensor_pump_rate != null && sensor_pump_rate > pumpMaxRate) {
+      violations.push({ type: "EQUIPMENT_FAILURE", reading: sensor_pump_rate, limit: pumpMaxRate, label: "Pump Rate", unit: "L/min" });
+    }
+
+    // Create incidents for new violations
+    const createdIncidents = [];
+    if (violations.length > 0) {
+      const existingActive = await prisma.incident.findMany({
+        where: { instrumentId: instrument.instrumentId, status: { in: ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS"] } },
+        select: { type: true },
+      });
+      const activeTypes = new Set(existingActive.map((i) => i.type));
+
+      for (const v of violations) {
+        if (activeTypes.has(v.type)) continue;
+        activeTypes.add(v.type);
+        const ratio = v.reading / v.limit;
+        const severity = ratio >= 1.5 ? "FATAL" : ratio >= 1.2 ? "CRITICAL" : "WARNING";
+
+        const incident = await incidentService.createIncident(
+          {
+            instrumentId: instrument.instrumentId,
+            instrumentName: instrument.name,
+            type: v.type,
+            severity,
+            description: `[Simulator] ${v.label} ${v.reading} ${v.unit} exceeds threshold ${v.limit} ${v.unit} on equipment ${equipment.name} (${equipment.equipmentId}).`,
+            currentReading: v.reading,
+            threshold: v.limit,
+          },
+          { id: user.id, fullName: user.fullName || "Simulator" }
+        );
+        createdIncidents.push(incident);
+      }
+
+      if (createdIncidents.length > 0 && instrument.status !== "Maintenance" && instrument.status !== "Decommissioned") {
+        await prisma.instrument.update({ where: { id: instrument.id }, data: { status: "Maintenance" } });
+      }
+
+      const recipients = await prisma.user.findMany({
+        where: { role: { name: { in: ["Supervisor", "Engineer", "Admin"] } }, isActive: true },
+        select: { id: true },
+      });
+      const recipientIds = recipients.map((u) => u.id);
+
+      if (recipientIds.length > 0 && createdIncidents.length > 0) {
+        await notificationService.createBulkNotifications({
+          recipientIds,
+          title: "🚨 Simulator Threshold Alert",
+          message: `Oil Pump Simulator detected ${createdIncidents.length} violation(s) on "${instrument.name}" (${instrument.instrumentId}). Incident(s) created — review required in Action Approval.`,
+          type: "ERROR",
+          category: "INCIDENT",
+          relatedId: createdIncidents[0].id,
+          link: "/action-approval",
+          createdBy: user.id,
+        });
+      }
+    }
+
+    // Emit real-time socket events
+    const io = getIO();
+    if (io) {
+      io.emit("simulator:tank_update", {
+        instrumentId: instrument.instrumentId,
+        instrumentObjectId: instrument.id,
+        instrumentName: instrument.name,
+        currentOilVolume: newVolume,
+        tankCapacity,
+        percentage: Math.round(newPct * 10) / 10,
+        pumpedVolume: actualPumped,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (createdIncidents.length > 0) {
+        io.emit("simulator:incident_created", {
+          incidents: createdIncidents.map((inc) => ({
+            id: inc.id,
+            incidentId: inc.incidentId,
+            instrumentId: inc.instrumentId,
+            instrumentName: inc.instrumentName,
+            type: inc.type,
+            severity: inc.severity,
+            status: inc.status,
+            description: inc.description,
+            currentReading: inc.currentReading,
+            threshold: inc.threshold,
+            createdAt: inc.createdAt,
+          })),
+          instrumentId: instrument.instrumentId,
+          triggeredBy: user.fullName || "Simulator",
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
+    const alertLevel = this.getAlertLevel(newPct);
+    if (alertLevel !== "NORMAL") {
+      await notifyOilThreshold(user.id, instrument, newVolume, tankCapacity, newPct, alertLevel);
+    }
+
+    return {
+      instrument: {
+        id: updatedInstrument.id,
+        instrumentId: updatedInstrument.instrumentId,
+        name: updatedInstrument.name,
+        tankCapacity: updatedInstrument.tankCapacity,
+        currentOilVolume: updatedInstrument.currentOilVolume,
+        percentage: Math.round(newPct * 10) / 10,
+        alertLevel,
+      },
+      transaction,
+      pump: { pumpedVolume: actualPumped, requestedVolume: pump_volume, previousVolume: currentVolume, newVolume },
+      thresholdCheck: {
+        thresholds: { pressureLimit, tempLimit, pumpMaxRate },
+        violations: violations.map((v) => ({ type: v.type, reading: v.reading, limit: v.limit, label: v.label, unit: v.unit })),
+        incidentsCreated: createdIncidents.length,
+        incidents: createdIncidents.map((inc) => ({ id: inc.id, incidentId: inc.incidentId, type: inc.type, severity: inc.severity })),
+      },
+    };
   },
 
   // ===== EXTRACT OIL =====

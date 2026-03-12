@@ -76,4 +76,10 @@ export const oilTransactionController = {
     const response = responseSuccess(result, "Auto-extract status retrieved successfully");
     res.status(response.statusCode).json(response);
   },
+
+  async simulatePump(req, res, next) {
+    const result = await oilTransactionService.simulatePump(req.body, req.user);
+    const response = responseSuccess(result, "Pump simulation completed successfully", 201);
+    res.status(response.statusCode).json(response);
+  },
 };

@@ -336,6 +336,64 @@ oilTransactionRouter.get("/auto-extract/status/:instrumentId", protect, checkPer
 
 /**
  * @swagger
+ * /api/oil-transactions/simulate-pump:
+ *   post:
+ *     summary: Simulate oil pump with threshold check
+ *     description: |
+ *       Pumps oil into instrument tank and checks sensor readings (pressure, temperature, pump rate)
+ *       against Admin-configured thresholds (SystemConfig). If any sensor exceeds threshold,
+ *       an Incident is automatically created in Real-time Alerts and Action Approval.
+ *       Emits socket events: simulator:tank_update, simulator:incident_created
+ *     tags: [Oil Transactions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [instrument_id, equipment_id, pump_volume]
+ *             properties:
+ *               instrument_id:
+ *                 type: string
+ *                 example: "INS-001"
+ *               equipment_id:
+ *                 type: string
+ *                 example: "EQ-001"
+ *               pump_volume:
+ *                 type: number
+ *                 description: "Liters to pump into tank"
+ *                 example: 500
+ *               sensor_pressure:
+ *                 type: number
+ *                 description: "Current pressure reading (psi)"
+ *                 example: 145
+ *               sensor_temperature:
+ *                 type: number
+ *                 description: "Current temperature reading (°C)"
+ *                 example: 95
+ *               sensor_pump_rate:
+ *                 type: number
+ *                 description: "Current pump rate (L/min)"
+ *                 example: 220
+ *     responses:
+ *       201:
+ *         description: Simulation result with incident info if thresholds exceeded
+ *       400:
+ *         description: Tank full, inactive equipment, or validation error
+ *       404:
+ *         description: Instrument or equipment not found
+ */
+oilTransactionRouter.post(
+  "/simulate-pump",
+  protect,
+  checkPermission(["EXTRACT_OIL", "ALL"]),
+  oilTransactionController.simulatePump
+);
+
+/**
+ * @swagger
  * /api/oil-transactions/{id}:
  *   get:
  *     summary: Get oil transaction by ID
