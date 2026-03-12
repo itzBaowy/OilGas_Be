@@ -3,7 +3,7 @@ import { BadRequestException } from '../common/helpers/exception.helper.js';
 import { incidentService } from './incident.service.js';
 import { notificationService } from './notification.service.js';
 import { getIO } from '../common/socket/init.socket.js';
-import { notifyPasswordExpiring, notifyPasswordExpired } from '../common/helpers/notification.helper.js';
+import { notifyPasswordExpiring, notifyPasswordExpired, notifyAccountDeactivated } from '../common/helpers/notification.helper.js';
 
 const parseNumericValue = (val) => {
   if (val == null) return null;
@@ -472,10 +472,6 @@ export const systemConfigService = {
     return JSON.parse(config.value);
   },
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // PASSWORD EXPIRY POLICY
-  // ═══════════════════════════════════════════════════════════════════════
-
   async getPasswordExpiryPolicy() {
     const config = await prisma.systemConfig.findUnique({
       where: { key: 'PASSWORD_EXPIRY_POLICY' },
@@ -525,10 +521,6 @@ export const systemConfigService = {
     return JSON.parse(config.value);
   },
 
-  /**
-   * Check passwords expiring soon and send notifications
-   * Called by scheduled job (e.g., daily at 9 AM)
-   */
   async checkAndNotifyPasswordExpiry() {
     const policy = await this.getPasswordExpiryPolicy();
     
@@ -598,6 +590,120 @@ export const systemConfigService = {
     return { 
       notified: usersToNotify.length, 
       expired: expiredUsers.length 
+    };
+  },
+
+  async getAutoDeactivationPolicy() {
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'AUTO_DEACTIVATION_POLICY' },
+    });
+
+    if (!config) {
+      return {
+        inactivityDays: 30,
+        enabled: true,
+      };
+    }
+
+    return JSON.parse(config.value);
+  },
+
+  async updateAutoDeactivationPolicy(data, userId) {
+    const { inactivityDays, enabled } = data;
+
+    // Validation
+    if (!Number.isInteger(inactivityDays) || inactivityDays < 1 || inactivityDays > 365) {
+      throw new BadRequestException('Inactivity days must be between 1 and 365');
+    }
+
+    if (typeof enabled !== 'boolean') {
+      throw new BadRequestException('Enabled must be true or false');
+    }
+
+    const config = await prisma.systemConfig.upsert({
+      where: { key: 'AUTO_DEACTIVATION_POLICY' },
+      update: { 
+        value: JSON.stringify({ inactivityDays, enabled }), 
+        updatedBy: userId
+      },
+      create: {
+        key: 'AUTO_DEACTIVATION_POLICY',
+        value: JSON.stringify({ inactivityDays, enabled }),
+        description: 'Cấu hình tự động vô hiệu hóa tài khoản không hoạt động',
+        updatedBy: userId,
+      },
+    });
+
+    return JSON.parse(config.value);
+  },
+
+  async checkAndDeactivateInactiveUsers() {
+    const policy = await this.getAutoDeactivationPolicy();
+    
+    if (!policy.enabled) {
+      console.log('[AutoDeactivation] Policy is disabled, skipping check');
+      return { deactivated: 0 };
+    }
+
+    const now = new Date();
+    const inactivityThreshold = new Date(now);
+    inactivityThreshold.setDate(inactivityThreshold.getDate() - policy.inactivityDays);
+
+    // Find users whose last login was before the inactivity threshold
+    // Use LoginHistory to determine last activity
+    const allActiveUsers = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        createdAt: true,
+        loginHistory: {
+          orderBy: {
+            loginAt: 'desc'
+          },
+          take: 1,
+        },
+      },
+    });
+
+    const usersToDeactivate = [];
+
+    for (const user of allActiveUsers) {
+      const lastLogin = user.loginHistory[0]?.loginAt;
+      const lastActivityDate = lastLogin ? new Date(lastLogin) : new Date(user.createdAt);
+
+      if (lastActivityDate < inactivityThreshold) {
+        usersToDeactivate.push({
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          lastActivityDate,
+        });
+      }
+    }
+
+    // Deactivate users
+    for (const user of usersToDeactivate) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          isActive: false,
+          status: 'INACTIVE',
+        },
+      });
+
+      // Send notification
+      await notifyAccountDeactivated(user.id, policy.inactivityDays);
+    }
+
+    console.log(`[AutoDeactivation] Deactivated ${usersToDeactivate.length} inactive users (threshold: ${policy.inactivityDays} days)`);
+    
+    return { 
+      deactivated: usersToDeactivate.length 
     };
   },
 };

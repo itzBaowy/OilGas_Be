@@ -244,6 +244,22 @@ export const notifyPasswordExpired = async (userId) => {
     }
 };
 
+export const notifyAccountDeactivated = async (userId, inactivityDays) => {
+    try {
+        await notificationService.createNotification({
+            body: {
+                recipientId: userId,
+                title: 'Account Deactivated Due to Inactivity',
+                message: `Your account has been automatically deactivated due to ${inactivityDays} days of inactivity. Please contact administrator to reactivate.`,
+                type: 'WARNING',
+                category: 'SYSTEM',
+            },
+        });
+    } catch (error) {
+        console.error('Error sending account deactivated notification:', error);
+    }
+};
+
 // ===== OIL TRANSACTION NOTIFICATIONS =====
 
 export const notifyOilThreshold = async (userId, instrument, currentVolume, tankCapacity, percentage, alertLevel) => {

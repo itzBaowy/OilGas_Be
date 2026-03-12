@@ -55,4 +55,22 @@ export const systemConfigController = {
     const response = responseSuccess(data, 'Password expiry check completed successfully');
     res.status(response.statusCode).json(response);
   },
+
+  async getAutoDeactivationPolicy(req, res) {
+    const data = await systemConfigService.getAutoDeactivationPolicy();
+    const response = responseSuccess(data, 'Auto deactivation policy retrieved successfully');
+    res.status(response.statusCode).json(response);
+  },
+
+  async updateAutoDeactivationPolicy(req, res) {
+    const data = await systemConfigService.updateAutoDeactivationPolicy(req.body, req.user.id);
+    const response = responseSuccess(data, 'Auto deactivation policy updated successfully');
+    res.status(response.statusCode).json(response);
+  },
+
+  async checkAutoDeactivation(req, res) {
+    const data = await systemConfigService.checkAndDeactivateInactiveUsers();
+    const response = responseSuccess(data, 'Auto deactivation check completed successfully');
+    res.status(response.statusCode).json(response);
+  },
 };

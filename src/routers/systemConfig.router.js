@@ -309,4 +309,84 @@ systemConfigRouter.put('/password-expiry-policy', protect, checkRole(['Admin']),
  */
 systemConfigRouter.post('/password-expiry-check', protect, checkRole(['Admin']), systemConfigController.checkPasswordExpiry);
 
+/**
+ * @swagger
+ * /api/system-config/auto-deactivation-policy:
+ *   get:
+ *     summary: Lấy cấu hình chính sách tự động vô hiệu hóa tài khoản
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy auto deactivation policy thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 inactivityDays:
+ *                   type: integer
+ *                   example: 30
+ *                 enabled:
+ *                   type: boolean
+ *                   example: true
+ */
+systemConfigRouter.get('/auto-deactivation-policy', protect, systemConfigController.getAutoDeactivationPolicy);
+
+/**
+ * @swagger
+ * /api/system-config/auto-deactivation-policy:
+ *   put:
+ *     summary: Cập nhật cấu hình chính sách tự động vô hiệu hóa (Admin only)
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - inactivityDays
+ *               - enabled
+ *             properties:
+ *               inactivityDays:
+ *                 type: integer
+ *                 minimum: 7
+ *                 maximum: 365
+ *                 example: 30
+ *               enabled:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Cập nhật auto deactivation policy thành công
+ */
+systemConfigRouter.put('/auto-deactivation-policy', protect, checkRole(['Admin']), systemConfigController.updateAutoDeactivationPolicy);
+
+/**
+ * @swagger
+ * /api/system-config/auto-deactivation-check:
+ *   post:
+ *     summary: Chạy kiểm tra auto deactivation ngay (Manual trigger - Admin only)
+ *     tags: [System Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Kiểm tra hoàn thành
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 deactivated:
+ *                   type: integer
+ *                   example: 3
+ *                   description: Số users đã bị deactivate do không hoạt động
+ */
+systemConfigRouter.post('/auto-deactivation-check', protect, checkRole(['Admin']), systemConfigController.checkAutoDeactivation);
+
 export default systemConfigRouter;

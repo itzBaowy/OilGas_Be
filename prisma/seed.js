@@ -1075,6 +1075,19 @@ async function main() {
     },
   });
 
+  await prisma.systemConfig.upsert({
+    where: { key: "AUTO_DEACTIVATION_POLICY" },
+    update: {},
+    create: {
+      key: "AUTO_DEACTIVATION_POLICY",
+      value: JSON.stringify({
+        inactivityDays: 30,
+        enabled: true,
+      }),
+      description: "Cấu hình tự động vô hiệu hóa tài khoản không hoạt động",
+    },
+  });
+
   console.log("✅ Seed SystemConfig thành công!");
 
   console.log("🎉 Seed tất cả dữ liệu thành công!");
