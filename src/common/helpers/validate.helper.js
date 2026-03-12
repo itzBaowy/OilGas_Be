@@ -413,24 +413,42 @@ export function validateInstrumentUpdateData(data) {
 
  
 }
- export function validateThresholds (data)  {
-  if (!Number.isInteger(data.pressureLimit) || data.pressureLimit < 50 || data.pressureLimit > 500) {
+export function validatePasswordExpiryPolicy(data) {
+  const { expiryDays, notifyDaysBefore, enabled } = data;
+
+  if (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 365) {
+    throw new BadRequestException('Expiry days must be between 1 and 365');
+  }
+
+  if (!Number.isInteger(notifyDaysBefore) || notifyDaysBefore < 1 || notifyDaysBefore > 30) {
+    throw new BadRequestException('Notify days before must be between 1 and 30');
+  }
+
+  if (typeof enabled !== 'boolean') {
+    throw new BadRequestException('Enabled must be true or false');
+  }
+}
+
+export function validateThresholds(data) {
+  const { pressureLimit, tempLimit, autoRefreshInterval, alertSoundEnabled, criticalAlertThreshold } = data;
+
+  if (!Number.isInteger(pressureLimit) || pressureLimit < 50 || pressureLimit > 500) {
     throw new BadRequestException('Pressure limit must be between 50 and 500 psi');
   }
 
-  if (!Number.isInteger(data.tempLimit) || data.tempLimit < 30 || data.tempLimit > 200) {
+  if (!Number.isInteger(tempLimit) || tempLimit < 30 || tempLimit > 200) {
     throw new BadRequestException('Temperature limit must be between 30 and 200 °C');
   }
 
-  if (!Number.isInteger(data.autoRefreshInterval) || data.autoRefreshInterval < 5000 || data.autoRefreshInterval > 300000) {
+  if (!Number.isInteger(autoRefreshInterval) || autoRefreshInterval < 5000 || autoRefreshInterval > 300000) {
     throw new BadRequestException('Auto refresh interval must be between 5 and 300 seconds');
   }
 
-  if (typeof data.alertSoundEnabled !== 'boolean') {
+  if (typeof alertSoundEnabled !== 'boolean') {
     throw new BadRequestException('alertSoundEnabled must be true or false');
   }
 
-  if (!Number.isInteger(data.criticalAlertThreshold) || data.criticalAlertThreshold < 1 || data.criticalAlertThreshold > 10) {
+  if (!Number.isInteger(criticalAlertThreshold) || criticalAlertThreshold < 1 || criticalAlertThreshold > 10) {
     throw new BadRequestException('Critical alert threshold must be between 1 and 10');
   }
-};
+}
