@@ -15,8 +15,6 @@ const VALID_TYPES = [
 
 const VALID_SEVERITIES = ["WARNING", "CRITICAL", "FATAL"];
 
-const VALID_STATUSES = ["OPEN", "ACKNOWLEDGED", "IN_PROGRESS", "RESOLVED"];
-
 // Severity order for sorting active alerts (higher = more severe)
 const SEVERITY_ORDER = { FATAL: 3, CRITICAL: 2, WARNING: 1 };
 
@@ -35,7 +33,7 @@ const DEFAULT_THRESHOLDS = {
 };
 
 export const incidentService = {
-    // ── ID Generator ─────────────────────────────────────────────────────────
+    //ID Generator
     async generateIncidentId() {
         const updated = await prisma.sequence.upsert({
             where: { name: "incident" },
@@ -45,7 +43,7 @@ export const incidentService = {
         return `INC-${String(updated.value).padStart(3, "0")}`;
     },
 
-    // ── 1. Get All Incidents (with filters + pagination) ─────────────────────
+    //1. Get All Incidents (with filters + pagination)
     async getAllIncidents(req) {
         const { page, pageSize, where, index } = buildQueryPrisma(req.query);
 
@@ -83,14 +81,14 @@ export const incidentService = {
         };
     },
 
-    // ── 2. Get Incident By ID ─────────────────────────────────────────────────
+    //2. Get Incident By ID
     async getIncidentById(id) {
         const incident = await prisma.incident.findUnique({ where: { id } });
         if (!incident) throw new NotFoundException("Incident not found");
         return incident;
     },
 
-    // ── 3. Create Incident ────────────────────────────────────────────────────
+    //3. Create Incident
     async createIncident(data, user) {
         const {
             instrumentId,
@@ -102,7 +100,7 @@ export const incidentService = {
             threshold,
         } = data;
 
-        // --- Validation ---
+        // Validation
         if (!instrumentId)   throw new BadRequestException("instrumentId is required");
         if (!instrumentName) throw new BadRequestException("instrumentName is required");
         if (!type)           throw new BadRequestException("type is required");
@@ -146,7 +144,7 @@ export const incidentService = {
         return incident;
     },
 
-    // ── 4. Acknowledge Incident (Engineer) ────────────────────────────────────
+    //4. Acknowledge Incident (Engineer)
     async acknowledgeIncident(id, user) {
         const incident = await prisma.incident.findUnique({ where: { id } });
         if (!incident) throw new NotFoundException("Incident not found");
@@ -168,7 +166,7 @@ export const incidentService = {
         return updated;
     },
 
-    // ── 4b. Get Available Engineers (prioritized for assignment) ──────────────
+    //4b. Get Available Engineers (prioritized for assignment)
     async getAvailableEngineers(incidentId) {
         const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
         if (!incident) throw new NotFoundException("Incident not found");
@@ -249,7 +247,7 @@ export const incidentService = {
         };
     },
 
-    // ── 4c. Assign Engineer to Incident (Supervisor) ─────────────────────────
+    //4c. Assign Engineer to Incident (Supervisor)
     async assignEngineerToIncident(incidentId, data, user) {
         const { engineerId } = data;
         if (!engineerId) throw new BadRequestException("engineerId is required");
@@ -311,7 +309,7 @@ export const incidentService = {
         return updated;
     },
 
-    // ── 5. Respond to Incident (Supervisor) ───────────────────────────────────
+    // 5. Respond to Incident (Supervisor)
     async respondToIncident(id, data, user) {
         const { actionTaken, status } = data;
 
@@ -347,16 +345,12 @@ export const incidentService = {
             data: updateData,
         });
 
-        // ── Recovery: Khi RESOLVED → kiểm tra Instrument có cần về Active không ──
+        //Recovery: Khi RESOLVED → kiểm tra Instrument có cần về Active không
         if (status === "RESOLVED" && incident.instrumentId) {
             this._recoverInstrumentStatus(incident.instrumentId)
                 .catch((err) => console.error('[IncidentResolve] Instrument recovery failed:', err));
         }
 
-        /* [THRESHOLD_SCAN_DISABLED] ─────────────────────────────────────────
-         * Tạm tắt: Re-scan thiết bị sau khi resolve incident.
-         * Khi bật lại: bỏ comment block bên dưới.
-         * ────────────────────────────────────────────────────────────────────── */
         // if (status === "RESOLVED" && incident.instrumentId) {
         //     this._rescanAfterResolve(incident, user)
         //         .catch((err) => console.error('[IncidentRescan] Post-resolve scan failed:', err));
@@ -365,11 +359,6 @@ export const incidentService = {
         return updated;
     },
 
-    /**
-     * Recovery Instrument status sau khi resolve incident.
-     * Nếu Instrument đang Maintenance và không còn incident active nào → chuyển về Active.
-     * Logic này TÁCH BIỆT với threshold scan — là chức năng cốt lõi của Incident lifecycle.
-     */
     async _recoverInstrumentStatus(instrumentIdStr) {
         const instrument = await prisma.instrument.findFirst({
             where: {
@@ -399,11 +388,6 @@ export const incidentService = {
         }
     },
 
-    /**
-     * Startup check: Quét tất cả Instrument đang Maintenance mà không còn
-     * incident active nào → chuyển về Active.
-     * Gọi 1 lần duy nhất khi server khởi động.
-     */
     async reconcileInstrumentStatuses() {
         const maintenanceInstruments = await prisma.instrument.findMany({
             where: { status: 'Maintenance', isDeleted: false },
@@ -437,11 +421,6 @@ export const incidentService = {
         }
     },
 
-    /**
-     * BACKGROUND: Re-scan thiết bị sau khi resolve incident.
-     * Nếu Equipment readings vẫn vượt ngưỡng → tạo incident mới (thiết bị chưa thực sự sửa xong).
-     * Nếu readings đã an toàn → chuyển Instrument về Active (nếu không còn incident active nào khác).
-     */
     async _rescanAfterResolve(resolvedIncident, user) {
         const { instrumentId } = resolvedIncident;
 
@@ -532,7 +511,7 @@ export const incidentService = {
         }
     },
 
-    // ── 6. Active Alerts ──────────────────────────────────────────────────────
+    //6. Active Alerts
     async getActiveAlerts() {
         const items = await prisma.incident.findMany({
             where: { status: { in: ["OPEN", "ACKNOWLEDGED"] } },
@@ -558,7 +537,7 @@ export const incidentService = {
         };
     },
 
-    // ── 7. Manual Fault Report (Supervisor only) ──────────────────────────────
+    //7. Manual Fault Report (Supervisor only)
     async reportManualIncident(data, user) {
         const {
             instrumentId,
@@ -631,7 +610,7 @@ export const incidentService = {
             });
         }
 
-        // ── Notification cho Supervisor & Engineer ────────────────────────────
+        //Notification cho Supervisor & Engineer
         const recipients = await prisma.user.findMany({
             where: {
                 role: { name: { in: ['Supervisor', 'Engineer', 'Admin'] } },
@@ -655,7 +634,7 @@ export const incidentService = {
             });
         }
 
-        // ── Socket event cho real-time sync ───────────────────────────────────
+        //Socket event cho real-time sync
         const io = getIO();
         if (io) {
             io.emit('manual_fault_reported', {
